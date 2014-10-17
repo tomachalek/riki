@@ -1,0 +1,157 @@
+body {
+    font-family: "Bitstream Vera", "Vera", "Trebuchet MS", sans-serif;
+    padding: 0;
+    margin: 0;
+    color: #777777;
+    line-height: 1.6;
+}
+
+header {
+    margin: 0;
+    background-color: #191818;
+}
+
+footer {
+    background: none repeat scroll 0 0 #FAFAFA;
+    border-top: 1px solid #EEEEEE;
+    font-size: 70%;
+    color: #6F6F6F;
+    margin-top: 3.4286em;
+    margin-left: 210px;
+    padding: 1.1429em;
+}
+
+a {
+    color: #3B8BBA;
+}
+
+h1 {
+    font-size: 2em;
+    letter-spacing: 0.1em;
+    margin: 0.1em 0 0.9em 0;
+    color: #f73e5f;
+}
+
+h2 {
+    font-size: 1.7em;
+    font-weight: 300;
+    color: #b32d45;
+}
+
+h3 {
+    font-sizE: 1.3em;
+}
+
+h4 {
+    font-size: 1.1em;
+}
+
+h3, h4, h5, h6 {
+    color: #4B4B4B;
+}
+
+menu {
+    background: none repeat scroll 0 0 #191818;
+    bottom: 0;
+    left: 0;
+    /* margin-left: -160px; */
+    overflow-y: auto;
+    position: fixed;
+    top: 0;
+    width: 200px;
+    z-index: 1000;
+    margin: 0;
+    padding: 20px 0 0 15px;
+    font-size: 80%;
+}
+
+menu a {
+    color: #999999;
+}
+
+menu a.index {
+    font-weight: bold;
+    color: #afafaf;
+}
+
+menu ul {
+    margin: 0 0 0 5px;
+    padding: 0;
+    list-style-type: none;
+}
+
+menu > ul li {
+    margin: 0;
+}
+
+section.main {
+    margin: 0 0 0 230px;
+    padding: 15px 25px;
+}
+
+.utils {
+    margin-top: 40px;
+}
+
+pre {
+    background: none repeat scroll 0 0 #F5F5F5;
+    border: 1px solid #D5D5D5;
+    border-radius: 4px;
+    color: #6F6F6F;
+    font-size: 13px;
+    line-height: 20px;
+    padding: 8px 12px;
+    position: relative;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+table td, table th {
+    padding: 3px 10px;
+    border: 1px solid #D5D5D5;
+}
+
+table tr:first-child th {
+    border-top: 0;
+}
+
+table tr:last-child td {
+    border-bottom: 0;
+}
+
+table tr td:first-child,
+table tr th:first-child {
+    border-left: 0;
+}
+
+table tr td:last-child,
+table tr th:last-child {
+    border-right: 0;
+}
+
+a.external {
+    background-image: url('../img/external-link.png');
+    background-repeat: no-repeat;
+    background-position: 100% 2px;
+    padding-right: 12px;
+}
+
+.search {
+    margin-bottom: 20px;
+}
+
+.search-term {
+    font-size: 120%;
+}
+
+ul.search-result {
+    list-style-type: none;
+    margin-left: 0;
+    padding-left: 0;
+}
+
+ul.search-result > li {
+    margin: 0;
+}

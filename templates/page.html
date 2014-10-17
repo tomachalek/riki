@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+
+{% block content %}
+{{ html }}
+{% endblock %}
+
+{% block footer %}
+last change: <strong>{{ page_info.date }}</strong> by <strong>{{ page_info.user }}</strong><br />
+{% if page_info.changeset %}
+revision: {{ page_info.changeset }} ({{ page_info.summary }})
+{% endif %}
+{% endblock %}
+
+{% block script %}
+<script type="text/javascript">
+    require(['models/page'], function (page) {
+        page.init();
+    });
+</script>
+{% endblock %}

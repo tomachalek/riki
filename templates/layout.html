@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link type="text/css" rel="stylesheet" href="{{ appPath }}static/css/style.css"/>
+        <link type="text/css" rel="stylesheet" href="{{ appPath }}static/css/jquery.fancybox.css"/>
+        <meta charset="utf-8" />
+        <title>RIKI - {{ page_title }}</title>
+        <script type="text/javascript" src="{{ appPath }}static/js/requirejs.min.js"></script>
+        <script type="text/javascript">
+            requirejs.config({
+                baseUrl: "{{ appPath }}static/js",
+                paths: {
+                    "jquery": "jquery.min",
+                    "fancybox": "fancybox.min"
+                },
+                shim: {
+                    "fancybox": {
+                        "deps": ['jquery']
+                    }
+                }
+            });
+            define('win', [], function () {
+                return window;
+            });
+        </script>
+    </head>
+    <body>
+        <menu>
+            <form class="search" action="{{ appPath }}_search" method="GET">
+                <input type="text" name="query" value="{{ query }}" />
+                <button type="submit" title="search">&#128270;</button>
+            </form>
+
+            <strong>upper directory:</strong>
+            <ul>
+                {% if parent_dir %}
+                <li><a href="{{ appPath }}page/{{ parent_dir }}">/{{ parent_dir }}</a></li>
+                {% else %}
+                <li><a href="{{ appPath }}page">main page</a></li>
+                {% endif %}
+            </ul>
+
+            {% if page_list %}
+            <strong>current directory:</strong>
+            <ul>
+            {% for item in page_list %}
+            <li><a class="page" href="{{ appPath }}page{{ item }}">{{ item }}</a></li>
+            {% endfor %}
+            </ul>
+            {% else %}
+            <ul>
+                <li><a href="{{ appPath }}">&#8678; home</a></li>
+            </ul>
+            {% endif %}
+
+            <div class="utils">
+                <strong>utils</strong>
+                <ul>
+                    <li><a href="{{ appPath }}_images">images</a></li>
+                </ul>
+            </div>
+
+        </menu>
+        <section class="main">
+        {% block content %}
+        {% endblock %}
+        </section>
+        <footer>
+        {% block footer %}
+        {% endblock %}
+        </footer>
+        {% block script %}
+        {% endblock %}
+    </body>
+</html>

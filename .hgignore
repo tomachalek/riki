@@ -1,0 +1,11 @@
+syntax: glob
+
+*.pyc
+.idea
+*.*~
+
+config.json
+cache
+data
+fulltext
+log
