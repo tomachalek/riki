@@ -4,5 +4,6 @@
     "logPath" : "/path/to/a/log/dir/application.log",
     "fulltextIndexDir" : "/path/to/a/fulltext/index/dir",
     "templateCacheDir" : "/path/to/a/cache/dir",
+    "pictureCacheDir" : "/path/to/a/picture-cache/dir",
     "markdownExtensions" : ["tables", "fenced_code"]
 }

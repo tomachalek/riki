@@ -65,7 +65,7 @@ def file_is_image(filename):
     returns:
     True if file is image else False
     """
-    return os.path.basename(filename).split('.')[-1] in ('jpg', 'jpeg', 'ico', 'png', 'gif')
+    return os.path.basename(filename).split('.')[-1].lower() in ('jpg', 'jpeg', 'ico', 'png', 'gif')
 
 
 def get_file_info(path, path_prefix=''):

@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+
+{% block script %}
+<script type="text/javascript">
+    require(['models/files'], function (page) {
+        page.init();
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+
+{% for item in files %}
+<div class="gallery-item" style="width: 200px">
+    <a class="fancybox" rel="group" href="{{ appPath }}page{{ item.relpath }}?width=800">
+        <img src="{{ appPath }}page{{ item.relpath }}?width=200&amp;normalize=1" />
+    </a>
+    <div class="metadata">
+        {{ item.exif_datetime }},
+        {{ item.exif_image_width }} x {{ item.exif_image_height }} {{item.exif_orientation}}
+        {{ item.size }}, {{ item.exif_model }}</div>
+</div>
+{% endfor %}
+
+{% endblock %}

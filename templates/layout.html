@@ -40,8 +40,8 @@
                 {% endif %}
             </ul>
 
-            {% if page_list %}
             <strong>current directory:</strong>
+            {% if page_list %}
             <ul>
             {% for item in page_list %}
             <li><a class="page" href="{{ appPath }}page{{ item }}">{{ item }}</a></li>
@@ -49,13 +49,14 @@
             </ul>
             {% else %}
             <ul>
-                <li><a href="{{ appPath }}">&#8678; home</a></li>
+                <li>--</li>
             </ul>
             {% endif %}
 
             <div class="utils">
-                <strong>utils</strong>
+                <strong>global</strong>
                 <ul>
+                    <li><strong><a href="{{ appPath }}">&#8678; home</a></strong></li>
                     <li><a href="{{ appPath }}_images">images</a></li>
                 </ul>
             </div>

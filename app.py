@@ -17,9 +17,12 @@ import json
 import os
 import logging
 from logging import handlers
+import hashlib
 
 import markdown
 from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
+import Image
+import PIL.ExifTags
 
 import files
 
@@ -27,8 +30,9 @@ import files
 urls = (
     '/', 'Index',
     '/_images', 'Images',
-    '/page(/.+\.(jpg|jpeg|png|gif))', 'Image',
+    '/page(/.+\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF))', 'Picture',
     '/page(/.*)?', 'Page',
+    '/gallery(/.*)?', 'Gallery',
     '/_search', 'Search'
 )
 
@@ -141,10 +145,55 @@ class Images(object):
         return template.render(appPath=str(conf['appPath']), files=extended)
 
 
-class Image(object):
+class Gallery(object):
+
+    @staticmethod
+    def _get_exif(img):
+        return dict((PIL.ExifTags.TAGS[k], v) for k, v in img._getexif().items() if k in PIL.ExifTags.TAGS)
+
+    def GET(self, path):
+        data_dir = str(conf['dataDir'])
+        path = import_path(path)
+        gallery_fs_dir = os.path.dirname('%s/%s' % (data_dir, path))
+        images = files.list_files(gallery_fs_dir, files.file_is_image, recursive=False)
+        parent_dir = os.path.dirname(os.path.dirname(path))
+
+        extended = []
+        for img in images:
+            info = files.get_file_info(img, path_prefix=data_dir)
+            exif = self._get_exif(Image.open(img))
+            info['exif_datetime'] = exif.get('DateTime')
+            info['exif_model'] = '%s (%s)' % (exif.get('Model'), exif.get('Make'))
+            info['exif_orientation'] = exif.get('Orientation')
+            info['exif_light_source'] = exif.get('LightSource')
+            info['exif_exposure_time'] = exif.get('ExposureTime')
+            info['exif_scene_type'] = exif.get('SceneType')
+            info['exif_image_width'] = exif.get('ExifImageWidth')
+            info['exif_image_height'] = exif.get('ExifImageHeight')
+            extended.append(info)
+
+        template = open_template('gallery.html')
+        web.header('Content-Type', 'text/html')
+        page_list = files.strip_prefix(files.list_files(gallery_fs_dir, os.path.isdir,
+                                                        recursive=False, include_dirs=True), data_dir)
+        return template.render(appPath=str(conf['appPath']), files=extended,
+                               page_list=page_list, parent_dir=parent_dir)
+
+
+class Picture(object):
     """
     Provides images
     """
+    @staticmethod
+    def _get_thumbnail_path(url_path, size):
+        code = hashlib.md5('%s-%s-%s' % (url_path, size[0], size[1])).hexdigest()
+        return '%s/%s.jpg' % (conf['pictureCacheDir'], code)
+
+    @staticmethod
+    def _calc_size(img, new_width):
+        w, h = img.size
+        return int(round(float(new_width) * h / w))
+
     def GET(self, path, img_type):
         content_types = {
             'png': 'image/png',
@@ -153,11 +202,22 @@ class Image(object):
             'gif': 'image/gif',
             'ico': 'image/x-icon'
         }
-        path = import_path(path)
-        image_dir = '%s/%s' % (str(conf['dataDir']), path)
-
-        with open(image_dir, 'rb') as image:
-            web.header('Content-Type', content_types.get(img_type, 'text/plain'))
+        fs_path = '%s/%s' % (str(conf['dataDir']), import_path(path))
+        args = web.input(width=None, normalize=False)
+        width = args.width
+        normalize = bool(int(args.normalize))
+        if width is not None:
+            img = Image.open(fs_path)
+            size = (int(width), self._calc_size(img, width))
+            thumb_path = self._get_thumbnail_path(path, size)
+            if not os.path.isfile(thumb_path):
+                img.thumbnail(size, Image.ANTIALIAS)
+                if img.size[0] < img.size[1] and normalize:
+                    img = img.crop((0, 0, size[0], int(round(200. * 3 / 4))))
+                img.save(thumb_path, "JPEG", quality=90)  # TODO
+            fs_path = thumb_path
+        with open(fs_path, 'rb') as image:
+            web.header('Content-Type', content_types.get(img_type, 'image/jpeg'))
             return image.read()
 
 
@@ -174,7 +234,15 @@ class Page(object):
         page_fs_path = '%s/%s' % (data_dir, path)
 
         if files.page_is_dir(page_fs_path):
-            raise web.seeother('/page/%s/index' % path)
+            try:
+                metadata = json.load(open('%s/metadata.json' % page_fs_path, 'rb'))
+            except IOError:
+                metadata = {}
+            print('meta: %s' % (metadata,))
+            if metadata.get('directoryType', 'page') == 'gallery':
+                raise web.seeother('/gallery/%s/index' % path)
+            else:
+                raise web.seeother('/page/%s/index' % path)
         else:
             page_fs_path = '%s.md' % page_fs_path
             curr_dir = os.path.dirname(path)
