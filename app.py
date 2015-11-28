@@ -18,11 +18,10 @@ import os
 import logging
 from logging import handlers
 import hashlib
-import re
 
 import markdown
 from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
-import Image
+from PIL import Image
 import PIL.ExifTags
 from elasticsearch import Elasticsearch
 
@@ -133,7 +132,7 @@ class Index(object):
     Homepage
     """
     def GET(self):
-        web.seeother("/page/index")
+        web.seeother("%spage/index" % APP_PATH)
 
 
 class Images(object):
@@ -238,7 +237,7 @@ class Page(object):
     """
     def GET(self, path):
         if not path:
-            raise web.seeother('/page/index')
+            raise web.seeother('%spage/index' % APP_PATH)
 
         path = import_path(path)
         data_dir = str(conf['dataDir'])
@@ -250,9 +249,9 @@ class Page(object):
             except IOError:
                 metadata = {}
             if metadata.get('directoryType', 'page') == 'gallery':
-                raise web.seeother('/gallery/%s/index' % path)
+                raise web.seeother('%sgallery/%s/index' % (APP_PATH, path))
             else:
-                raise web.seeother('/page/%s/index' % path)
+                raise web.seeother('%spage/%s/index' % (APP_PATH, path))
         else:
             page_fs_path = '%s.md' % page_fs_path
             curr_dir = os.path.dirname(path)
