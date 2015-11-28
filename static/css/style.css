@@ -144,16 +144,24 @@ a.external {
 
 .search-term {
     font-size: 120%;
+    color: #f73e5f;
 }
 
 ul.search-result {
-    list-style-type: none;
+    list-style-type: disc;
     margin-left: 0;
     padding-left: 0;
 }
 
 ul.search-result > li {
     margin: 0;
+}
+
+ul li .srch-chapter {
+    border: 1px solid #D5D5D5;
+    border-radius: 4px;
+    padding: 0.1em 0.4em;
+    white-space: nowrap;
 }
 
 .gallery-item {

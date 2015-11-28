@@ -12,8 +12,8 @@
 
 {% for item in files %}
 <div class="gallery-item" style="width: 200px">
-    <a class="fancybox" rel="group" href="{{ appPath }}page{{ item.relpath }}?width=800">
-        <img src="{{ appPath }}page{{ item.relpath }}?width=200&amp;normalize=1" />
+    <a class="fancybox" rel="group" href="{{ app_path }}page{{ item.relpath }}?width=800">
+        <img src="{{ app_path }}page{{ item.relpath }}?width=200&amp;normalize=1" />
     </a>
     <div class="metadata">
         {{ item.exif_datetime }},

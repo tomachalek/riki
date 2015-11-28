@@ -18,11 +18,13 @@ import os
 import logging
 from logging import handlers
 import hashlib
+import re
 
 import markdown
 from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
 import Image
 import PIL.ExifTags
+from elasticsearch import Elasticsearch
 
 import files
 
@@ -62,11 +64,13 @@ def open_template(filename):
 conf = json.load(open('%s/config.json' % os.path.realpath(os.path.dirname(__file__))))
 setup_logger(str(conf['logPath']))
 
+APP_NAME = conf.get('app_name', 'Riki')
+APP_PATH = str(conf['appPath'])
+
 
 def import_path(path):
-    p = conf.get('appPath')
-    if path.find(p) == 0:
-        path = path[len(p):]
+    if path.find(APP_PATH) == 0:
+        path = path[len(APP_PATH):]
     elif path[0] == '/':
         path = path[1:]
     return path
@@ -106,20 +110,22 @@ def extract_text(node):
     return ans
 
 
-def extract_data(text):
+def extract_data(md_path):
     """
     extracts a text from an HTML code
     """
     # TODO indexing should be done from the original source (i.e. from the markup files)
     import BeautifulSoup
-    soup = BeautifulSoup.BeautifulSoup(text)
+
+    md_src = load_markdown(md_path)
+    soup = BeautifulSoup.BeautifulSoup(md_src)
     h1 = soup.find('h1')
     if h1:
         h1_text = h1.text
     else:
         h1_text = ''
-    s = extract_text(soup)
-    return ' '.join(s), h1_text
+    h2 = soup.findAll(['h2', 'h3'])
+    return [x.text for x in h2], h1_text
 
 
 class Index(object):
@@ -142,7 +148,9 @@ class Images(object):
             extended.append(files.get_file_info(img, path_prefix=data_path))
         template = open_template('files.html')
         web.header('Content-Type', 'text/html')
-        return template.render(appPath=str(conf['appPath']), files=extended)
+        return template.render(app_name=APP_NAME,
+                               app_path=APP_PATH,
+                               files=extended)
 
 
 class Gallery(object):
@@ -176,8 +184,11 @@ class Gallery(object):
         web.header('Content-Type', 'text/html')
         page_list = files.strip_prefix(files.list_files(gallery_fs_dir, os.path.isdir,
                                                         recursive=False, include_dirs=True), data_dir)
-        return template.render(appPath=str(conf['appPath']), files=extended,
-                               page_list=page_list, parent_dir=parent_dir)
+        return template.render(app_path=APP_PATH,
+                               app_name=APP_NAME,
+                               files=extended,
+                               page_list=page_list,
+                               parent_dir=parent_dir)
 
 
 class Picture(object):
@@ -238,7 +249,6 @@ class Page(object):
                 metadata = json.load(open('%s/metadata.json' % page_fs_path, 'rb'))
             except IOError:
                 metadata = {}
-            print('meta: %s' % (metadata,))
             if metadata.get('directoryType', 'page') == 'gallery':
                 raise web.seeother('/gallery/%s/index' % path)
             else:
@@ -267,7 +277,8 @@ class Page(object):
                                                         recursive=False, include_dirs=True), data_dir)
 
         template = open_template(page_template)
-        html = template.render(appPath=str(conf['appPath']),
+        html = template.render(app_name=APP_NAME,
+                               app_path=APP_PATH,
                                html=inner_html,
                                page_list=page_list,
                                parent_dir=parent_dir,
@@ -281,30 +292,31 @@ class Search(object):
     Search results page
     """
     def GET(self):
-        from whoosh import index
-        from whoosh.qparser import QueryParser
+        es = Elasticsearch(conf['fulltext']['serviceUrl'])
+        query = {
+            "match": {"_all": web.input().query}
+        }
+        res = es.search(index=conf['fulltext']['indexName'],
+                        body={"query": query,
+                              "fields": ["pageName", "path", "fsPath", "text"]})
+        rows = []
+        for a in res['hits']['hits']:
+            fields = a['fields']
 
-        query = web.input().query
-        ll_query = 'content:%s OR tags:%s' % (query, query)
-        ix = index.open_dir(conf['fulltextIndexDir'])
-        parser = QueryParser("content", ix.schema)
-        myquery = parser.parse(ll_query)
+            fs_path = os.path.normpath('%s/%s.md' % (conf['dataDir'], fields['path'][0]))
+            page_chapters, h1 = extract_data(fs_path)
+            rows.append({
+                'h1': h1 if h1 else fields['path'][0],
+                'file': fields['path'][0],
+                'chapters': page_chapters
+            })
 
-        with ix.searcher() as searcher:
-            ans = searcher.search(myquery)
-            rows = []
-            for a in ans:
-                fs_path = os.path.normpath('%s/%s.md' % (conf['dataDir'], a['file']))
-                page_text, h1 = extract_data(load_markdown(fs_path))
-                a.text = a.highlights(fieldname='content', text=page_text)
-                a.h1 = h1 if h1 else a['file']
-                rows.append(a)
-            template = open_template('search.html')
-            web.header('Content-Type', 'text/html')
-            html = template.render(appPath=str(conf['appPath']),
-                                   query=query,
-                                   ans=rows)
-            return html
+        template = open_template('search.html')
+        web.header('Content-Type', 'text/html')
+        return template.render(app_name=APP_NAME,
+                               app_path=APP_PATH,
+                               query=web.input().query,
+                               ans=rows)
 
 
 app = web.application(urls, globals(), autoreload=False)

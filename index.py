@@ -21,9 +21,12 @@ A command-line fulltext indexing utility based on whoosh library
 import argparse
 import os
 import json
+import re
+import datetime
+import hashlib
 
-from whoosh import index
-from whoosh.fields import *
+
+from elasticsearch import Elasticsearch
 
 
 def get_files(path, pattern=None):
@@ -96,54 +99,60 @@ def idx_norm_path(path, data_dir):
     return idx_path
 
 
-def delete_index(path):
-    """
-    Removes index files from a specified directory
+class Indexer(object):
 
-    arguments:
-    path -- index files location
-    """
-    for item in os.listdir(path):
-        file_path = '%s/%s' % (path, item)
-        os.unlink(file_path)
-        print('deleted: %s' % file_path)
+    def __init__(self, es, index_name, type_name):
+        self._es = es
+        self._index_name = index_name
+        self._type_name = type_name
 
+    @staticmethod
+    def _create_id(doc):
+        return hashlib.sha1(json.dumps(doc)).hexdigest()
 
-def index_file(path, data_dir, writer):
-    data_dir = norm_path(data_dir)
-    path = norm_path(path)
+    def index_file(self, path, data_dir):
+        data_dir = norm_path(data_dir)
+        path = norm_path(path)
 
-    with open(path) as f:
-        idx_path = unicode(idx_norm_path(path, data_dir))
-        s = f.read().decode('utf-8')
-        print(idx_path)
-        tags = idx_path.replace('/', ',')
-        writer.add_document(file=idx_path, content=s, tags=tags)
+        with open(path) as f:
+            idx_path = unicode(idx_norm_path(path, data_dir))
+            mtime = datetime.datetime.fromtimestamp(os.path.getmtime(path)).isoformat()
+            s = f.read().decode('utf-8')
+            tags = idx_path.split('/')
+            doc = {
+                'datetime': mtime,
+                'pageName': tags[-1],
+                'path': idx_path,
+                'fsPath': path,
+                'tags': tags,
+                'text': s
+            }
+            res = es.index(index=self._index_name, doc_type=self._type_name,
+                           id=self._create_id(doc), body=doc)
+            #print(res)
+            # TODO test for errors
+
 
 
 if __name__ == '__main__':
     conf = json.load(open('./config.json'))
     argparser = argparse.ArgumentParser(description="Markdown file indexer")
-    argparser.add_argument('file', metavar="FILE", help="data directory")
+    argparser.add_argument('-f', '--file', help="a single file to index")
     argparser.add_argument('-n', '--new-index', const=True, default=False,
                            action='store_const', help="creates new index")
     args = argparser.parse_args()
 
     data_dir = conf['dataDir']
 
+    es = Elasticsearch(conf['fulltext']['serviceUrl'])
+
     if args.new_index:
-        delete_index(conf['fulltextIndexDir'])
-        schema = Schema(file=TEXT(stored=True),
-                        content=TEXT,
-                        tags=KEYWORD(stored=True, lowercase=True, commas=True))
-        idx = index.create_in(conf['fulltextIndexDir'], schema)
-    else:
-        idx = index.open_dir(conf['fulltextIndexDir'])
+        index_conf = json.load(open('./index.json'))
+        es.indices.create(index=conf['fulltext']['indexName'],
+                          ignore=400,
+                          body=index_conf)
 
-    writer = idx.writer()
-
-    text_files = get_files(args.file, r'.+\.md$')
+    indexer = Indexer(es=es, index_name=conf['fulltext']['indexName'], type_name='pages')
+    text_files = get_files(data_dir, r'.+\.md$')
     for tf in text_files:
-        index_file(tf, data_dir, writer)
-
-    writer.commit()
+        indexer.index_file(tf, data_dir)
