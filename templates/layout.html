@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <link type="text/css" rel="stylesheet" href="{{ appPath }}static/css/style.css"/>
-        <link type="text/css" rel="stylesheet" href="{{ appPath }}static/css/jquery.fancybox.css"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link type="text/css" rel="stylesheet" href="{{ app_path }}static/css/style.css"/>
+        <link type="text/css" rel="stylesheet" href="{{ app_path }}static/css/jquery.fancybox.css"/>
         <meta charset="utf-8" />
-        <title>RIKI - {{ page_title }}</title>
-        <script type="text/javascript" src="{{ appPath }}static/js/requirejs.min.js"></script>
+        <title>{{app_name}} {% if page_title %} - {{ page_title }}{% endif %}</title>
+        <script type="text/javascript" src="{{ app_path }}static/js/requirejs.min.js"></script>
         <script type="text/javascript">
             requirejs.config({
-                baseUrl: "{{ appPath }}static/js",
+                baseUrl: "{{ app_path }}static/js",
                 paths: {
                     "jquery": "jquery.min",
                     "fancybox": "fancybox.min"
@@ -26,7 +27,7 @@
     </head>
     <body>
         <menu>
-            <form class="search" action="{{ appPath }}_search" method="GET">
+            <form class="search" action="{{ app_path }}_search" method="GET">
                 <input type="text" name="query" value="{{ query }}" />
                 <button type="submit" title="search">&#128270;</button>
             </form>
@@ -34,9 +35,9 @@
             <strong>upper directory:</strong>
             <ul>
                 {% if parent_dir %}
-                <li><a href="{{ appPath }}page/{{ parent_dir }}">/{{ parent_dir }}</a></li>
+                <li><a href="{{ app_path }}page/{{ parent_dir }}">/{{ parent_dir }}</a></li>
                 {% else %}
-                <li><a href="{{ appPath }}page">main page</a></li>
+                <li><a href="{{ app_path }}page">main page</a></li>
                 {% endif %}
             </ul>
 
@@ -44,7 +45,7 @@
             {% if page_list %}
             <ul>
             {% for item in page_list %}
-            <li><a class="page" href="{{ appPath }}page{{ item }}">{{ item }}</a></li>
+            <li><a class="page" href="{{ app_path }}page{{ item }}">{{ item }}</a></li>
             {% endfor %}
             </ul>
             {% else %}
@@ -56,8 +57,8 @@
             <div class="utils">
                 <strong>global</strong>
                 <ul>
-                    <li><strong><a href="{{ appPath }}">&#8678; home</a></strong></li>
-                    <li><a href="{{ appPath }}_images">images</a></li>
+                    <li><strong><a href="{{ app_path }}">&#8678; home</a></strong></li>
+                    <li><a href="{{ app_path }}_images">images</a></li>
                 </ul>
             </div>
 

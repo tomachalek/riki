@@ -1,12 +1,16 @@
 {% extends "layout.html" %}
 
-{% block body %}
-Search for <em class="search-term">{{ query }}</em>
+{% block content %}
+Search for <em class="search-term">{{ query }}</em>:
 
 <ul class="search-result">
 {% for row in ans %}
-    <li><strong>{{ row.h1 }}</strong><br /><a href="{{ appPath }}page/{{ row.file }}">{{ row.file }}</a>
-        <p>{{ row.text }}</p>
+    <li><a href="{{ app_path }}page/{{ row.file }}"><strong>{{ row.h1 }}</strong></a>
+        <p>
+            {% for chapter in row.chapters %}
+            <span class="srch-chapter">{{ chapter }}</span>
+            {% endfor %}
+        </p>
     </li>
 {% endfor %}
 </ul>
