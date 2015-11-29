@@ -27,15 +27,7 @@ define(['jquery', 'win'], function ($, win) {
     var lib = {};
 
     lib.init = function () {
-        lib.menuLinks();
-    };
 
-    lib.menuLinks = function () {
-        $('menu a.page').each(function () {
-            if (endsWith($(this).text(), 'index')) {
-                $(this).addClass('index');
-            }
-        });
     };
 
     lib.selectText = function (element) {

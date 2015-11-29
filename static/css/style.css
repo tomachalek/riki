@@ -138,6 +138,10 @@ a.external {
     padding-right: 12px;
 }
 
+.navigation {
+    line-height: 2.5em;
+}
+
 .search {
     margin-bottom: 20px;
 }
@@ -178,5 +182,23 @@ ul li .srch-chapter {
 }
 
 .gallery-item a {
-   display: block;
+    display: block;
+}
+
+.page-list a {
+    color: #fff59c;
+    text-decoration: none;
+}
+
+.wildcard {
+    color: #fff59c;
+}
+
+.page-list a:hover {
+    text-decoration: underline;
+}
+
+.page-list .current {
+    font-weight: bold;
+    text-decoration: none;
 }

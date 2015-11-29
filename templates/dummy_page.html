@@ -2,10 +2,10 @@
 
 
 {% block content %}
-<h1>index</h1>
+<h1>index of {{ curr_dir_name }}</h1>
 <ul>
 {% for item in page_list %}
-<li><a href="{{ app_path }}page{{ item }}">{{ item }}</a></li>
+<li><a href="{{ app_path }}page{{ item[0] }}">{{ item[1] }}</a></li>
 {% endfor %}
 </ul>
 {% endblock %}

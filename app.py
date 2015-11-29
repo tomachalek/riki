@@ -121,6 +121,13 @@ class Action(object):
         self._wildcard_query = v
         web.setcookie('wildcard_query', str(int(self._wildcard_query)), 3600 * 24 * 7)
 
+    @staticmethod
+    def get_current_dirname(path):
+        ans = os.path.basename(path)
+        if ans == 'index':
+            ans = os.path.basename(os.path.dirname(path))
+        return ans
+
     def _render(self, tpl_path, data, content_type='text/html'):
         template = open_template(tpl_path)
         web.header('Content-Type', content_type)
@@ -183,7 +190,11 @@ class Gallery(Action):
             extended.append(info)
         page_list = files.strip_prefix(files.list_files(gallery_fs_dir, os.path.isdir,
                                                         recursive=False, include_dirs=True), data_dir)
-        values = dict(files=extended, page_list=page_list, parent_dir=parent_dir)
+        page_list = map(lambda x: (x, os.path.basename(x)), page_list)
+        values = dict(files=extended,
+                      page_list=page_list,
+                      parent_dir=parent_dir,
+                      curr_dir_name=self.get_current_dirname(path))
         return self._render('gallery.html', values)
 
 
@@ -252,11 +263,13 @@ class Page(Action):
         else:
             page_fs_path = '%s.md' % page_fs_path
             curr_dir = os.path.dirname(path)
+            page_name = os.path.basename(path)
 
         if curr_dir:
             parent_dir = '%s' % os.path.dirname(curr_dir)
             curr_dir_fs = '%s/%s' % (data_dir, curr_dir)
         else:
+            curr_dir = u"\u2302"
             parent_dir = None
             curr_dir_fs = data_dir
 
@@ -271,10 +284,13 @@ class Page(Action):
 
         page_list = files.strip_prefix(files.list_files(curr_dir_fs, None,
                                                         recursive=False, include_dirs=True), data_dir)
+        page_list = map(lambda x: (x, os.path.basename(x)), page_list)
         data = dict(html=inner_html,
                     page_list=page_list,
                     parent_dir=parent_dir,
-                    page_info=page_info)
+                    page_info=page_info,
+                    page_name=page_name,
+                    curr_dir_name=self.get_current_dirname(curr_dir))
         return self._render(page_template, data)
 
 

@@ -36,20 +36,25 @@
             </form>
             {% endif %}
 
-            <strong>upper directory:</strong>
-            <ul>
-                {% if parent_dir %}
-                <li><a href="{{ app_path }}page/{{ parent_dir }}">/{{ parent_dir }}</a></li>
-                {% else %}
-                <li><a href="{{ app_path }}page">main page</a></li>
-                {% endif %}
-            </ul>
+            <div class="navigation">
+            {% if parent_dir %}
+            <a href="{{ app_path }}page/{{ parent_dir }}">/{{ parent_dir }}</a> /
+            {% else %}
+            <a class="home" href="{{ app_path }}page">home</a> /
+            {% endif %}
+            {{ curr_dir_name }}:
+            </div>
 
-            <strong>current directory:</strong>
             {% if page_list %}
-            <ul>
+            <ul class="page-list">
             {% for item in page_list %}
-            <li><a class="page" href="{{ app_path }}page{{ item }}">{{ item }}</a></li>
+                <li>
+                {% if page_name == item[1] %}
+                    <span class="page current">{{ item[1] }}</span>
+                {% else %}
+                    <a class="page" href="{{ app_path }}page{{ item[0] }}">{{ item[1] }}</a>
+                {% endif %}
+                </li>
             {% endfor %}
             </ul>
             {% else %}
@@ -59,7 +64,7 @@
             {% endif %}
 
             <div class="utils">
-                <strong>global</strong>
+                <strong>shortcuts:</strong>
                 <ul>
                     <li><strong><a href="{{ app_path }}">&#8678; home</a></strong></li>
                     <li><a href="{{ app_path }}_images">images</a></li>
