@@ -23,7 +23,10 @@ import markdown
 from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
 from PIL import Image
 import PIL.ExifTags
-from elasticsearch import Elasticsearch
+try:
+    from elasticsearch import Elasticsearch
+except ImportError:
+    Elasticsearch = None
 
 import files
 
@@ -121,7 +124,9 @@ class Action(object):
     def _render(self, tpl_path, data, content_type='text/html'):
         template = open_template(tpl_path)
         web.header('Content-Type', content_type)
-        values = dict(app_name=APP_NAME, app_path=APP_PATH,
+        values = dict(app_name=APP_NAME,
+                      app_path=APP_PATH,
+                      enable_search=(Elasticsearch is not None and conf.get('fulltext')),
                       wildcard_query=self._wildcard_query)
         values.update(data)
         return template.render(**values)
