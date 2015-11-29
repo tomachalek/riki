@@ -110,6 +110,23 @@ def extract_description(md_path):
     return [x.text for x in h2], h1_text
 
 
+class Action(object):
+    def __init__(self):
+        self._wildcard_query = bool(int(web.cookies().get('wildcard_query', '0')))
+
+    def set_wildcard_query(self, v):
+        self._wildcard_query = v
+        web.setcookie('wildcard_query', str(int(self._wildcard_query)), 3600 * 24 * 7)
+
+    def _render(self, tpl_path, data, content_type='text/html'):
+        template = open_template(tpl_path)
+        web.header('Content-Type', content_type)
+        values = dict(app_name=APP_NAME, app_path=APP_PATH,
+                      wildcard_query=self._wildcard_query)
+        values.update(data)
+        return template.render(**values)
+
+
 class Index(object):
     """
     Homepage
@@ -118,7 +135,7 @@ class Index(object):
         web.seeother("%spage/index" % APP_PATH)
 
 
-class Images(object):
+class Images(Action):
     """
     A page displaying list of all images
 
@@ -130,14 +147,10 @@ class Images(object):
         extended = []
         for img in images:
             extended.append(files.get_file_info(img, path_prefix=data_path))
-        template = open_template('files.html')
-        web.header('Content-Type', 'text/html')
-        return template.render(app_name=APP_NAME,
-                               app_path=APP_PATH,
-                               files=extended)
+        return self._render('files.html', dict(files=extended))
 
 
-class Gallery(object):
+class Gallery(Action):
 
     @staticmethod
     def _get_exif(img):
@@ -163,21 +176,15 @@ class Gallery(object):
             info['exif_image_width'] = exif.get('ExifImageWidth')
             info['exif_image_height'] = exif.get('ExifImageHeight')
             extended.append(info)
-
-        template = open_template('gallery.html')
-        web.header('Content-Type', 'text/html')
         page_list = files.strip_prefix(files.list_files(gallery_fs_dir, os.path.isdir,
                                                         recursive=False, include_dirs=True), data_dir)
-        return template.render(app_path=APP_PATH,
-                               app_name=APP_NAME,
-                               files=extended,
-                               page_list=page_list,
-                               parent_dir=parent_dir)
+        values = dict(files=extended, page_list=page_list, parent_dir=parent_dir)
+        return self._render('gallery.html', values)
 
 
 class Picture(object):
     """
-    Provides images
+    Provides access to images
     """
     @staticmethod
     def _get_thumbnail_path(url_path, size):
@@ -216,7 +223,7 @@ class Picture(object):
             return image.read()
 
 
-class Page(object):
+class Page(Action):
     """
     A riki page
     """
@@ -259,19 +266,14 @@ class Page(object):
 
         page_list = files.strip_prefix(files.list_files(curr_dir_fs, None,
                                                         recursive=False, include_dirs=True), data_dir)
-
-        template = open_template(page_template)
-        html = template.render(app_name=APP_NAME,
-                               app_path=APP_PATH,
-                               html=inner_html,
-                               page_list=page_list,
-                               parent_dir=parent_dir,
-                               page_info=page_info)
-        web.header('Content-Type', 'text/html')
-        return html
+        data = dict(html=inner_html,
+                    page_list=page_list,
+                    parent_dir=parent_dir,
+                    page_info=page_info)
+        return self._render(page_template, data)
 
 
-class Search(object):
+class Search(Action):
     """
     Search results page
     """
@@ -283,6 +285,7 @@ class Search(object):
                     "_all": web.input().query
                 }
             }
+            self.set_wildcard_query(True)
         else:
             query = {
                 "multi_match": {
@@ -291,7 +294,7 @@ class Search(object):
                     "fields": ["text", "pageName", "tags"]
                 }
             }
-        print('query: %s' % (web.input().query,))
+            self.set_wildcard_query(False)
         res = es.search(index=conf['fulltext']['indexName'],
                         body={"query": query,
                               "fields": ["pageName", "path", "fsPath", "text"]})
@@ -306,13 +309,8 @@ class Search(object):
                 'file': fields['path'][0],
                 'chapters': page_chapters
             })
-
-        template = open_template('search.html')
-        web.header('Content-Type', 'text/html')
-        return template.render(app_name=APP_NAME,
-                               app_path=APP_PATH,
-                               query=web.input().query,
-                               ans=rows)
+        values = dict(query=web.input().query, ans=rows)
+        return self._render('search.html', values)
 
 
 app = web.application(urls, globals(), autoreload=False)
