@@ -23,7 +23,7 @@ define(['jquery', 'models/layout'], function ($, layout) {
     var lib = {};
 
     function isExternalLink(link) {
-        var url = $(link).attr('href');
+        var url = $(link).attr('href') || '';
 
         return url.indexOf('http') === 0;
     }
