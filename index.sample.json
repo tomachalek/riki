@@ -1,0 +1,45 @@
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "czech": {
+          "type": "czech"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "pages": {
+      "properties": {
+        "datetime": {
+          "type": "date"
+        },
+        "lastChangeset": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "pageName": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "path": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "fsPath": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "tags": {
+          "type": "string",
+          "index": "not_analyzed"
+        },
+        "text": {
+          "type": "string",
+          "index": "analyzed",
+          "analyzer": "czech"
+        }
+      }
+    }
+  }
+}

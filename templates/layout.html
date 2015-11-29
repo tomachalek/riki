@@ -28,6 +28,7 @@
     <body>
         <menu>
             <form class="search" action="{{ app_path }}_search" method="GET">
+                <label><input type="checkbox" name="wildcard_query" value="1" /> use wildcards &quot;*&quot; &amp; &quot;?&quot;</label>
                 <input type="text" name="query" value="{{ query }}" />
                 <button type="submit" title="search">&#128270;</button>
             </form>

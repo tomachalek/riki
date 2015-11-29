@@ -90,30 +90,13 @@ def load_markdown(path):
                                  extensions=conf.get('markdownExtensions', []))
 
 
-def extract_text(node):
-    """
-    extracts a text from an HTML tree
-    """
-    # TODO indexing should be done from the original source (i.e. from the markup files)
-    import BeautifulSoup
-    ans = []
-    for tag in node:
-        if hasattr(tag, 'string') and tag.string:
-            ans.append(tag.string)
-        elif type(tag) is unicode or type(tag) is str:
-            ans.append(tag)
-        elif isinstance(tag, BeautifulSoup.Tag):
-            if tag.name in ('div', 'p', 'table', 'tr', 'ul'):
-                ans.append('...')
-            ans += extract_text(tag)
-    return ans
-
-
-def extract_data(md_path):
+def extract_description(md_path):
     """
     extracts a text from an HTML code
+
+    arguments:
+    md_path -- path to a markdown file to be analyzed
     """
-    # TODO indexing should be done from the original source (i.e. from the markup files)
     import BeautifulSoup
 
     md_src = load_markdown(md_path)
@@ -138,6 +121,8 @@ class Index(object):
 class Images(object):
     """
     A page displaying list of all images
+
+    TODO: this should be rather an attachment browser of some kind
     """
     def GET(self):
         data_path = str(conf['dataDir'])
@@ -292,9 +277,21 @@ class Search(object):
     """
     def GET(self):
         es = Elasticsearch(conf['fulltext']['serviceUrl'])
-        query = {
-            "match": {"_all": web.input().query}
-        }
+        if web.input(wildcard_query=None).wildcard_query:
+            query = {
+                "wildcard": {
+                    "_all": web.input().query
+                }
+            }
+        else:
+            query = {
+                "multi_match": {
+                    "query": web.input().query,
+                    "operator": "and",
+                    "fields": ["text", "pageName", "tags"]
+                }
+            }
+        print('query: %s' % (web.input().query,))
         res = es.search(index=conf['fulltext']['indexName'],
                         body={"query": query,
                               "fields": ["pageName", "path", "fsPath", "text"]})
@@ -303,7 +300,7 @@ class Search(object):
             fields = a['fields']
 
             fs_path = os.path.normpath('%s/%s.md' % (conf['dataDir'], fields['path'][0]))
-            page_chapters, h1 = extract_data(fs_path)
+            page_chapters, h1 = extract_description(fs_path)
             rows.append({
                 'h1': h1 if h1 else fields['path'][0],
                 'file': fields['path'][0],
