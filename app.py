@@ -34,6 +34,7 @@ import files
 urls = (
     '/', 'Index',
     '/_images', 'Images',
+    '/page(/.+\\.txt)', 'Plain',
     '/page(/.+\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF))', 'Picture',
     '/page(/.*)?', 'Page',
     '/gallery(/.*)?', 'Gallery',
@@ -162,6 +163,15 @@ class Images(Action):
         return self._render('files.html', dict(files=extended))
 
 
+class Plain(object):
+    def GET(self, path):
+        data_dir = str(conf['dataDir'])
+        page_fs_path = '%s/%s' % (data_dir, path)
+        web.header('Content-Type', 'text/plain')
+        with open(page_fs_path, 'rb') as f:
+            return f.read()
+
+
 class Gallery(Action):
 
     @staticmethod
@@ -265,6 +275,7 @@ class Page(Action):
             curr_dir = os.path.dirname(path)
             page_name = os.path.basename(path)
 
+        # setup the directory information
         if curr_dir:
             parent_dir = '%s' % os.path.dirname(curr_dir)
             curr_dir_fs = '%s/%s' % (data_dir, curr_dir)
@@ -273,6 +284,7 @@ class Page(Action):
             parent_dir = None
             curr_dir_fs = data_dir
 
+        # transform the page
         if files.page_exists(page_fs_path):
             page_info = files.get_version_info(data_dir, page_fs_path)
             inner_html = load_markdown(page_fs_path)
