@@ -122,6 +122,10 @@ class Action(object):
         self._wildcard_query = v
         web.setcookie('wildcard_query', str(int(self._wildcard_query)), 3600 * 24 * 7)
 
+    @property
+    def data_dir(self):
+        return str(conf['dataDir'])
+
     @staticmethod
     def get_current_dirname(path):
         ans = os.path.basename(path)
@@ -155,18 +159,16 @@ class Images(Action):
     TODO: this should be rather an attachment browser of some kind
     """
     def GET(self):
-        data_path = str(conf['dataDir'])
-        images = files.list_files(data_path, files.file_is_image, recursive=True)
+        images = files.list_files(self.data_dir, files.file_is_image, recursive=True)
         extended = []
         for img in images:
-            extended.append(files.get_file_info(img, path_prefix=data_path))
+            extended.append(files.get_file_info(img, path_prefix=self.data_dir))
         return self._render('files.html', dict(files=extended))
 
 
-class Plain(object):
+class Plain(Action):
     def GET(self, path):
-        data_dir = str(conf['dataDir'])
-        page_fs_path = '%s/%s' % (data_dir, path)
+        page_fs_path = '%s/%s' % (self.data_dir, path)
         web.header('Content-Type', 'text/plain')
         with open(page_fs_path, 'rb') as f:
             return f.read()
@@ -179,15 +181,14 @@ class Gallery(Action):
         return dict((PIL.ExifTags.TAGS[k], v) for k, v in img._getexif().items() if k in PIL.ExifTags.TAGS)
 
     def GET(self, path):
-        data_dir = str(conf['dataDir'])
         path = import_path(path)
-        gallery_fs_dir = os.path.dirname('%s/%s' % (data_dir, path))
+        gallery_fs_dir = os.path.dirname('%s/%s' % (self.data_dir, path))
         images = files.list_files(gallery_fs_dir, files.file_is_image, recursive=False)
         parent_dir = os.path.dirname(os.path.dirname(path))
 
         extended = []
         for img in images:
-            info = files.get_file_info(img, path_prefix=data_dir)
+            info = files.get_file_info(img, path_prefix=self.data_dir)
             exif = self._get_exif(Image.open(img))
             info['exif_datetime'] = exif.get('DateTime')
             info['exif_model'] = '%s (%s)' % (exif.get('Model'), exif.get('Make'))
@@ -199,7 +200,7 @@ class Gallery(Action):
             info['exif_image_height'] = exif.get('ExifImageHeight')
             extended.append(info)
         page_list = files.strip_prefix(files.list_files(gallery_fs_dir, os.path.isdir,
-                                                        recursive=False, include_dirs=True), data_dir)
+                                                        recursive=False, include_dirs=True), self.data_dir)
         page_list = map(lambda x: (x, os.path.basename(x)), page_list)
         values = dict(files=extended,
                       page_list=page_list,
@@ -208,7 +209,7 @@ class Gallery(Action):
         return self._render('gallery.html', values)
 
 
-class Picture(object):
+class Picture(Action):
     """
     Provides access to images
     """
@@ -230,7 +231,7 @@ class Picture(object):
             'gif': 'image/gif',
             'ico': 'image/x-icon'
         }
-        fs_path = '%s/%s' % (str(conf['dataDir']), import_path(path))
+        fs_path = '%s/%s' % (self.data_dir, import_path(path))
         args = web.input(width=None, normalize=False)
         width = args.width
         normalize = bool(int(args.normalize))
@@ -258,8 +259,7 @@ class Page(Action):
             raise web.seeother('%spage/index' % APP_PATH)
 
         path = import_path(path)
-        data_dir = str(conf['dataDir'])
-        page_fs_path = '%s/%s' % (data_dir, path)
+        page_fs_path = '%s/%s' % (self.data_dir, path)
 
         if files.page_is_dir(page_fs_path):
             try:
@@ -278,15 +278,15 @@ class Page(Action):
         # setup the directory information
         if curr_dir:
             parent_dir = '%s' % os.path.dirname(curr_dir)
-            curr_dir_fs = '%s/%s' % (data_dir, curr_dir)
+            curr_dir_fs = '%s/%s' % (self.data_dir, curr_dir)
         else:
             curr_dir = u"\u2302"
             parent_dir = None
-            curr_dir_fs = data_dir
+            curr_dir_fs = self.data_dir
 
         # transform the page
         if files.page_exists(page_fs_path):
-            page_info = files.get_version_info(data_dir, page_fs_path)
+            page_info = files.get_version_info(self.data_dir, page_fs_path)
             inner_html = load_markdown(page_fs_path)
             page_template = 'page.html'
         else:
@@ -294,8 +294,8 @@ class Page(Action):
             page_info = ''
             page_template = 'dummy_page.html'
 
-        page_list = files.strip_prefix(files.list_files(curr_dir_fs, None,
-                                                        recursive=False, include_dirs=True), data_dir)
+        page_list = files.strip_prefix(files.list_files(curr_dir_fs, None, recursive=False,
+                                                        include_dirs=True), self.data_dir)
         page_list = map(lambda x: (x, os.path.basename(x)), page_list)
         data = dict(html=inner_html,
                     page_list=page_list,
@@ -335,7 +335,7 @@ class Search(Action):
         for a in res['hits']['hits']:
             fields = a['fields']
 
-            fs_path = os.path.normpath('%s/%s.md' % (conf['dataDir'], fields['path'][0]))
+            fs_path = os.path.normpath('%s/%s.md' % (self.data_dir, fields['path'][0]))
             page_chapters, h1 = extract_description(fs_path)
             rows.append({
                 'h1': h1 if h1 else fields['path'][0],
