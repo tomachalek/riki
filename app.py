@@ -59,7 +59,7 @@ def setup_logger(path, debug=False):
 
 def open_template(filename):
     cache = FileSystemBytecodeCache(str(conf['templateCacheDir']))
-    env = Environment(loader=FileSystemLoader(os.path.realpath('%s/templates' % os.path.dirname(__file__))),
+    env = Environment(loader=FileSystemLoader(os.path.realpath(os.path.join(os.path.dirname(__file__), 'templates'))),
                       bytecode_cache=cache)
     return env.get_template(filename)
 
@@ -286,7 +286,7 @@ class Page(Action):
 
         # transform the page
         if files.page_exists(page_fs_path):
-            page_info = files.get_version_info(self.data_dir, page_fs_path)
+            page_info = files.get_version_info(self.data_dir, page_fs_path, info_encoding=conf['hgInfoEncoding'])
             inner_html = load_markdown(page_fs_path)
             page_template = 'page.html'
         else:
@@ -345,7 +345,7 @@ class Search(Action):
         values = dict(query=web.input().query, ans=rows)
         return self._render('search.html', values)
 
-
+# web.config.debug = False
 app = web.application(urls, globals(), autoreload=False)
 application = app.wsgifunc()
 
