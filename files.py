@@ -125,13 +125,14 @@ def list_files(path, predicate=None, recursive=False, include_dirs=False):
     return sorted(ans)
 
 
-def get_version_info(data_dir, path):
+def get_version_info(data_dir, path, info_encoding):
     """
     Obtains information about a file via Mercurial Python API
 
     arguments:
     data_dir -- path to a Mercurial repository (= riki data directory)
     path -- a file we want log information about
+    info_encoding -- encoding used on data fetched from hg (system dependent)
 
     returns:
     a dictionary {'date': str, 'user': str, 'changeset': str, 'summary' : str}
@@ -149,7 +150,8 @@ def get_version_info(data_dir, path):
         for item in re.split(r'\n', output):
             srch = re.match(r'^(\w+):\s+(.+)$', item)
             if srch:
-                ans[srch.groups()[0]] = srch.groups()[1]
+                v = srch.groups()[1]
+                ans[srch.groups()[0]] = v if info_encoding.lower() == 'utf-8' else v.decode(info_encoding)
     except error.Abort as e:
         logging.getLogger(__name__).warning('Failed to fetch version info about [%s]: %s' % (path, e))
     if 'user' not in ans:

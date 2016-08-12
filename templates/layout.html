@@ -1,86 +1,1 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link type="text/css" rel="stylesheet" href="{{ app_path }}static/css/style.css"/>
-        <link type="text/css" rel="stylesheet" href="{{ app_path }}static/css/jquery.fancybox.css"/>
-        <meta charset="utf-8" />
-        <title>{{app_name}} {% if page_title %} - {{ page_title }}{% endif %}</title>
-        <script type="text/javascript" src="{{ app_path }}static/js/requirejs.min.js"></script>
-        <script type="text/javascript">
-            requirejs.config({
-                baseUrl: "{{ app_path }}static/js",
-                paths: {
-                    "jquery": "jquery.min",
-                    "fancybox": "fancybox.min"
-                },
-                shim: {
-                    "fancybox": {
-                        "deps": ['jquery']
-                    }
-                }
-            });
-            define('win', [], function () {
-                return window;
-            });
-        </script>
-    </head>
-    <body>
-        <menu>
-            {% if enable_search %}
-            <form class="search" action="{{ app_path }}_search" method="GET">
-                <label><input type="checkbox" name="wildcard_query" value="1"
-                    {% if wildcard_query %}checked="checked"{% endif %}/> use wildcards &quot;*&quot; &amp; &quot;?&quot;</label>
-                <input type="text" name="query" value="{{ query }}" />
-                <button type="submit" title="search">&#128270;</button>
-            </form>
-            {% endif %}
-
-            <div class="navigation">
-            {% if parent_dir %}
-            <a href="{{ app_path }}page/{{ parent_dir }}">/{{ parent_dir }}</a> /
-            {% else %}
-            <a class="home" href="{{ app_path }}page">home</a> /
-            {% endif %}
-            {{ curr_dir_name }}:
-            </div>
-
-            {% if page_list %}
-            <ul class="page-list">
-            {% for item in page_list %}
-                <li>
-                {% if page_name == item[1] %}
-                    <span class="page current">{{ item[1] }}</span>
-                {% else %}
-                    <a class="page" href="{{ app_path }}page{{ item[0] }}">{{ item[1] }}</a>
-                {% endif %}
-                </li>
-            {% endfor %}
-            </ul>
-            {% else %}
-            <ul>
-                <li>--</li>
-            </ul>
-            {% endif %}
-
-            <div class="utils">
-                <strong>shortcuts:</strong>
-                <ul>
-                    <li><strong><a href="{{ app_path }}">&#8678; home</a></strong></li>
-                    <li><a href="{{ app_path }}_images">images</a></li>
-                </ul>
-            </div>
-
-        </menu>
-        <section class="main">
-        {% block content %}
-        {% endblock %}
-        </section>
-        <footer>
-        {% block footer %}
-        {% endblock %}
-        </footer>
-        {% block script %}
-        {% endblock %}
-    </body>
-</html>
+<!DOCTYPE html><html>    <head>        <meta name="viewport" content="width=device-width, initial-scale=1">        <link type="text/css" rel="stylesheet" href="{{ app_path }}static/css/style.css"/>        <link type="text/css" rel="stylesheet" href="{{ app_path }}static/css/jquery.fancybox.css"/>        <meta charset="utf-8" />        <title>{{app_name}} {% if page_title %} - {{ page_title }}{% endif %}</title>        <script type="text/javascript" src="{{ app_path }}static/js/requirejs.min.js"></script>        <script type="text/javascript">            requirejs.config({                baseUrl: "{{ app_path }}static/js",                paths: {                    "jquery": "jquery.min",                    "fancybox": "fancybox.min"                },                shim: {                    "fancybox": {                        "deps": ['jquery']                    }                }            });            define('win', [], function () {                return window;            });        </script>    </head>    <body>        <menu>            {% if enable_search %}            <form class="search" action="{{ app_path }}_search" method="GET">                <label><input type="checkbox" name="wildcard_query" value="1"                    {% if wildcard_query %}checked="checked"{% endif %}/> use wildcards &quot;*&quot; &amp; &quot;?&quot;</label>                <input type="text" name="query" value="{{ query }}" />                <button type="submit" title="search">&#128270;</button>            </form>            {% endif %}            <div class="navigation">            {% if parent_dir %}            <a href="{{ app_path }}page/{{ parent_dir }}">/{{ parent_dir }}</a> /            {% else %}            <a class="home" href="{{ app_path }}page">home</a> /            {% endif %}            <span class="current-dir">{{ curr_dir_name }}</span>:            </div>            {% if page_list %}            <ul class="page-list">            {% for item in page_list %}                <li>                {% if page_name == item[1] %}                    <span class="page current">{{ item[1] }}</span>                {% else %}                    <a class="page" href="{{ app_path }}page{{ item[0] }}">{{ item[1] }}</a>                {% endif %}                </li>            {% endfor %}            </ul>            {% else %}            <ul>                <li>--</li>            </ul>            {% endif %}            <div class="utils">                <strong>shortcuts:</strong>                <ul>                    <li><strong><a href="{{ app_path }}">&#8678; home</a></strong></li>                    <li><a href="{{ app_path }}_images">images</a></li>                </ul>            </div>        </menu>        <section class="main">        {% block content %}        {% endblock %}        </section>        <footer>        {% block footer %}        {% endblock %}        </footer>        {% block script %}        {% endblock %}    </body></html>
