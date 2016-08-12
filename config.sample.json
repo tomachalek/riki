@@ -9,5 +9,6 @@
     "fulltext": {
       "serviceUrl": "http://localhost:9200",
       "indexName": "riki"
-    }
+    },
+    "hgInfoEncoding": "windows-1250"
 }
