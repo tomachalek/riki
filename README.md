@@ -30,7 +30,7 @@ changegroup.fulltext = /var/www/riki/index.py /var/www/riki/data -n
 Requirements
 ------------
 
-* Python 2.6+
+* Python 3.6+
     - [markdown for Python](https://pypi.python.org/pypi/Markdown)
     - [Jinja](http://jinja.pocoo.org/)
     - [web.py](http://webpy.org/)   
