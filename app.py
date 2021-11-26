@@ -18,20 +18,40 @@ import os
 import logging
 from logging import handlers
 import hashlib
+from dataclasses import dataclass, field
+from dataclasses_json import dataclass_json, LetterCase
+from typing import List
 
 import markdown
 from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
 from PIL import Image
 import PIL.ExifTags
-try:
-    from elasticsearch import Elasticsearch
-except ImportError:
-    Elasticsearch = None
 
 import files
 
 
+@dataclass_json(letter_case=LetterCase.CAMEL)
+@dataclass
+class Conf:
+    app_path: str
+    data_dir: str
+    log_path: str
+    template_cache_dir: str
+    picture_cache_dir: str
+    hg_info_encoding: str
+    markdown_extensions: List[str] = field(default_factory=lambda: [])
+    app_name: str = field(default='Riki')
+
+
+with open(os.path.realpath(os.path.join(os.path.dirname(__file__), 'config.json'))) as fr:
+    conf: Conf = Conf.from_json(fr.read())
+
+APP_NAME = conf.app_name
+APP_PATH = conf.app_path
+
+
 urls = (
+    '', 'Index',
     '/', 'Index',
     '/_images', 'Images',
     '/page(/.+\\.txt)', 'Plain',
@@ -58,17 +78,17 @@ def setup_logger(path, debug=False):
 
 
 def open_template(filename):
-    cache = FileSystemBytecodeCache(str(conf['templateCacheDir']))
-    env = Environment(loader=FileSystemLoader(os.path.realpath(os.path.join(os.path.dirname(__file__), 'templates'))),
-                      bytecode_cache=cache)
+    cache = FileSystemBytecodeCache(conf.template_cache_dir)
+    env = Environment(
+        loader=FileSystemLoader(os.path.realpath(os.path.join(os.path.dirname(__file__), 'templates'))),
+        bytecode_cache=cache)
     return env.get_template(filename)
 
 
-conf = json.load(open('%s/config.json' % os.path.realpath(os.path.dirname(__file__))))
-setup_logger(str(conf['logPath']))
 
-APP_NAME = conf.get('app_name', 'Riki')
-APP_PATH = str(conf['appPath'])
+setup_logger(str(conf.log_path))
+
+
 
 
 def import_path(path):
@@ -90,8 +110,9 @@ def load_markdown(path):
     a string containing output HTML
     """
     with open(path) as page_file:
-        return markdown.markdown(page_file.read().decode('utf-8'),
-                                 extensions=conf.get('markdownExtensions', []))
+        return markdown.markdown(
+            page_file.read(),
+            extensions=conf.markdown_extensions)
 
 
 def extract_description(md_path):
@@ -124,7 +145,7 @@ class Action(object):
 
     @property
     def data_dir(self):
-        return str(conf['dataDir'])
+        return conf.data_dir
 
     @staticmethod
     def get_current_dirname(path):
@@ -138,7 +159,7 @@ class Action(object):
         web.header('Content-Type', content_type)
         values = dict(app_name=APP_NAME,
                       app_path=APP_PATH,
-                      enable_search=(Elasticsearch is not None and conf.get('fulltext')),
+                      enable_search=False, # TODO
                       wildcard_query=self._wildcard_query)
         values.update(data)
         return template.render(**values)
@@ -149,7 +170,7 @@ class Index(object):
     Homepage
     """
     def GET(self):
-        web.seeother("%spage/index" % APP_PATH)
+        web.seeother(f'{APP_PATH}page/index')
 
 
 class Images(Action):
@@ -168,7 +189,7 @@ class Images(Action):
 
 class Plain(Action):
     def GET(self, path):
-        page_fs_path = '%s/%s' % (self.data_dir, path)
+        page_fs_path = os.path.join(self.data_dir, path)
         web.header('Content-Type', 'text/plain')
         with open(page_fs_path, 'rb') as f:
             return f.read()
@@ -191,7 +212,7 @@ class Gallery(Action):
             info = files.get_file_info(img, path_prefix=self.data_dir)
             exif = self._get_exif(Image.open(img))
             info['exif_datetime'] = exif.get('DateTime')
-            info['exif_model'] = '%s (%s)' % (exif.get('Model'), exif.get('Make'))
+            info['exif_model'] = '{} ({})'.format(exif.get('Model'), exif.get('Make'))
             info['exif_orientation'] = exif.get('Orientation')
             info['exif_light_source'] = exif.get('LightSource')
             info['exif_exposure_time'] = exif.get('ExposureTime')
@@ -199,8 +220,12 @@ class Gallery(Action):
             info['exif_image_width'] = exif.get('ExifImageWidth')
             info['exif_image_height'] = exif.get('ExifImageHeight')
             extended.append(info)
-        page_list = files.strip_prefix(files.list_files(gallery_fs_dir, os.path.isdir,
-                                                        recursive=False, include_dirs=True), self.data_dir)
+        page_list = files.strip_prefix(
+            files.list_files(
+                gallery_fs_dir,
+                os.path.isdir,
+                recursive=False,
+                include_dirs=True), self.data_dir)
         page_list = map(lambda x: (x, os.path.basename(x)), page_list)
         values = dict(files=extended,
                       page_list=page_list,
@@ -213,10 +238,11 @@ class Picture(Action):
     """
     Provides access to images
     """
+
     @staticmethod
     def _get_thumbnail_path(url_path, size):
-        code = hashlib.md5('%s-%s-%s' % (url_path, size[0], size[1])).hexdigest()
-        return '%s/%s.jpg' % (conf['pictureCacheDir'], code)
+        code = hashlib.md5(f'{url_path}-{size[0]}-{size[1]}').hexdigest()
+        return os.path.join(conf.picture_cache_dir, f'{code}.jpg')
 
     @staticmethod
     def _calc_size(img, new_width):
@@ -231,7 +257,7 @@ class Picture(Action):
             'gif': 'image/gif',
             'ico': 'image/x-icon'
         }
-        fs_path = '%s/%s' % (self.data_dir, import_path(path))
+        fs_path = os.path.join(self.data_dir, import_path(path))
         args = web.input(width=None, normalize=False)
         width = args.width
         normalize = bool(int(args.normalize))
@@ -243,7 +269,7 @@ class Picture(Action):
                 img.thumbnail(size, Image.ANTIALIAS)
                 if img.size[0] < img.size[1] and normalize:
                     img = img.crop((0, 0, size[0], int(round(200. * 3 / 4))))
-                img.save(thumb_path, "JPEG", quality=90)  # TODO
+                img.save(thumb_path, 'JPEG', quality=90)  # TODO
             fs_path = thumb_path
         with open(fs_path, 'rb') as image:
             web.header('Content-Type', content_types.get(img_type, 'image/jpeg'))
@@ -256,29 +282,30 @@ class Page(Action):
     """
     def GET(self, path):
         if not path:
-            raise web.seeother('%spage/index' % APP_PATH)
+            raise web.seeother(f'{APP_PATH}page/index')
 
         path = import_path(path)
-        page_fs_path = '%s/%s' % (self.data_dir, path)
+        page_fs_path = os.path.join(self.data_dir, path)
 
         if files.page_is_dir(page_fs_path):
             try:
-                metadata = json.load(open('%s/metadata.json' % page_fs_path, 'rb'))
+                with open(os.path.join(page_fs_path, 'metadata.json'), 'rb') as fr:
+                    metadata = json.load(fr)
             except IOError:
                 metadata = {}
             if metadata.get('directoryType', 'page') == 'gallery':
-                raise web.seeother('%sgallery/%s/index' % (APP_PATH, path))
+                raise web.seeother(f'{APP_PATH}gallery/{path}/index')
             else:
-                raise web.seeother('%spage/%s/index' % (APP_PATH, path))
+                raise web.seeother(f'{APP_PATH}page/{path}/index')
         else:
-            page_fs_path = '%s.md' % page_fs_path
+            page_fs_path = f'{page_fs_path}.md'
             curr_dir = os.path.dirname(path)
             page_name = os.path.basename(path)
 
         # setup the directory information
         if curr_dir:
-            parent_dir = '%s' % os.path.dirname(curr_dir)
-            curr_dir_fs = '%s/%s' % (self.data_dir, curr_dir)
+            parent_dir = os.path.dirname(curr_dir)
+            curr_dir_fs = os.path.join(self.data_dir, curr_dir)
         else:
             curr_dir = u"\u2302"
             parent_dir = None
@@ -286,7 +313,8 @@ class Page(Action):
 
         # transform the page
         if files.page_exists(page_fs_path):
-            page_info = files.get_version_info(self.data_dir, page_fs_path, info_encoding=conf['hgInfoEncoding'])
+            page_info = files.get_version_info(
+                self.data_dir, page_fs_path, info_encoding=conf.hg_info_encoding)
             inner_html = load_markdown(page_fs_path)
             page_template = 'page.html'
         else:
@@ -294,9 +322,11 @@ class Page(Action):
             page_info = ''
             page_template = 'dummy_page.html'
 
-        page_list = files.strip_prefix(files.list_files(curr_dir_fs, None, recursive=False,
-                                                        include_dirs=True), self.data_dir)
-        page_list = map(lambda x: (x, os.path.basename(x)), page_list)
+        page_list = files.strip_prefix(
+            files.list_files(curr_dir_fs, None, recursive=False,
+                include_dirs=True), self.data_dir)
+        page_list = [(x, os.path.basename(x)) for x in page_list]
+        logging.getLogger(__name__).warning('page_list: {}'.format(page_list))
         data = dict(html=inner_html,
                     page_list=page_list,
                     parent_dir=parent_dir,

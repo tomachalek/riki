@@ -2,8 +2,8 @@
 
 
 {% block content %}
-<h1>index of {{ curr_dir_name }}</h1>
-<ul>
+<h1>index of &quot;{{ curr_dir_name }}&quot;</h1>
+<ul class="page-list">
 {% for item in page_list %}
 <li><a href="{{ app_path }}page{{ item[0] }}">{{ item[1] }}</a></li>
 {% endfor %}
