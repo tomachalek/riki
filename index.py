@@ -140,13 +140,9 @@ if __name__ == '__main__':
     argparser.add_argument('-f', '--file', help="a single file to index")
     argparser.add_argument('-n', '--new-index', const=True, default=False,
                            action='store_const', help="creates new index")
-    argparser.add_argument('-d', '--data-dir', help="custom data location")
     args = argparser.parse_args()
 
-    if not args.data_dir:
-        data_dir = conf['dataDir']
-    else:
-        data_dir = args.data_dir
+    data_dir = conf['dataDir']
 
     es = Elasticsearch(conf['fulltext']['serviceUrl'])
 

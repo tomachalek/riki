@@ -6,9 +6,11 @@
 {% endblock %}
 
 {% block footer %}
-last change: <strong>{{ page_info.date }}</strong> by <strong>{{ page_info.user }}</strong><br />
+<p>
+    last change: <strong>{{ page_info.date }}</strong> by <strong>{{ page_info.user }}</strong>
+</p>
 {% if page_info.changeset %}
-revision: {{ page_info.changeset }} ({{ page_info.summary }})
+<p>revision: {{ page_info.changeset }} ({{ page_info.summary }})</p>
 {% endif %}
 {% endblock %}
 

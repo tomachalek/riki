@@ -14,7 +14,6 @@
 
 import os
 import re
-from functools import partial
 import logging
 import datetime
 
@@ -106,10 +105,10 @@ def list_files(path, predicate=None, recursive=False, include_dirs=False):
     """
     ans = []
 
-    def cmp_path(p1, p2, prefix):
-        return cmp(int(os.path.isdir('%s/%s' % (prefix, p1))), int(os.path.isdir('%s/%s' % (prefix, p2))))
+    def sort_key(p1):
+        return int(os.path.isdir(os.path.join(path, p1)))
 
-    for item in sorted(os.listdir(path), cmp=partial(cmp_path, prefix=path)):
+    for item in sorted(os.listdir(path), key=sort_key):
         if item.startswith('.'):
             continue
         abspath = '%s/%s' % (path, item)
@@ -125,7 +124,7 @@ def list_files(path, predicate=None, recursive=False, include_dirs=False):
     return sorted(ans)
 
 
-def get_version_info(data_dir, path, info_encoding):
+def get_version_info(data_dir: str, path: str, info_encoding: str):
     """
     Obtains information about a file via Mercurial Python API
 
@@ -139,14 +138,15 @@ def get_version_info(data_dir, path, info_encoding):
     """
     from mercurial import commands, ui, hg, error
 
-    if type(path) is unicode:  # mercurial API does not like unicode path
-        path = path.encode('utf-8')
     ans = {}
     try:
-        repo = hg.repository(ui.ui(), data_dir)
+        bpath = path.encode(info_encoding)
+        import logging
+        logging.getLogger(__name__).warning('data dir: {}'.format(type(data_dir)))
+        repo = hg.repository(ui.ui(), data_dir.encode(info_encoding))
         repo.ui.pushbuffer()
-        commands.log(repo.ui, repo, path)
-        output = repo.ui.popbuffer()
+        commands.log(repo.ui, repo, bpath)
+        output = repo.ui.popbuffer().decode(info_encoding)
         for item in re.split(r'\n', output):
             srch = re.match(r'^(\w+):\s+(.+)$', item)
             if srch:
