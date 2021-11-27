@@ -13,9 +13,19 @@
 #    limitations under the License.
 
 import os
+from posixpath import relpath
 import re
-import logging
+from typing import List, Any, Optional
 import datetime
+from dataclasses import dataclass
+
+
+@dataclass
+class FileInfo:
+    size: int
+    mtime: int
+    relpath: str
+    metadata: Optional[Any] = None
 
 
 def strip_prefix(list_files, prefix):
@@ -26,7 +36,7 @@ def page_exists(path):
     return os.path.isfile(path)
 
 
-def page_is_dir(path):
+def page_is_dir(path) -> bool:
     """
     Tests whether a path corresponds to a directory
 
@@ -39,7 +49,7 @@ def page_is_dir(path):
     return os.path.isdir(path)
 
 
-def file_is_page(filename):
+def file_is_page(filename) -> bool:
     """
     Tests whether a file corresponds to a Markdown wiki page.
     Only a suffix is tested.
@@ -53,7 +63,7 @@ def file_is_page(filename):
     return filename.endswith('.md')
 
 
-def file_is_image(filename):
+def file_is_image(filename) -> bool:
     """
     Tests whether a filename corresponds to a supported image (jpg, jpeg, ico, png, gif).
     File suffix is used (i.e. no content analysis is performed).
@@ -67,7 +77,7 @@ def file_is_image(filename):
     return os.path.basename(filename).split('.')[-1].lower() in ('jpg', 'jpeg', 'ico', 'png', 'gif')
 
 
-def get_file_info(path, path_prefix=''):
+def get_file_info(path, path_prefix='') -> FileInfo:
     """
     Obtains information about a file - size, mtime and a relative path
     (according to the provided path_prefix).
@@ -85,14 +95,13 @@ def get_file_info(path, path_prefix=''):
         fsize = '%01.1fMB' % round(fsize / 1e6, 2)
     else:
         fsize = '%dKB' % round(fsize / 1e3)
-    return {
-        'size': fsize,
-        'mtime': mdate,
-        'relpath': path[len(path_prefix):] if path.find(path_prefix) == 0 else path
-    }
+    return FileInfo(
+        size=fsize,
+        mtime=mdate,
+        relpath=path[len(path_prefix):] if path.find(path_prefix) == 0 else path)
 
 
-def list_files(path, predicate=None, recursive=False, include_dirs=False):
+def list_files(path, predicate=None, recursive=False, include_dirs=False) -> List[str]:
     """
     Lists files (non-recursively) at the specified path.
 

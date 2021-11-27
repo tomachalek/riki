@@ -2,24 +2,53 @@
 
 {% block script %}
 <script type="text/javascript">
-    require(['models/files'], function (page) {
+    require(['models/files', 'jquery'], function (page, $) {
         page.init();
+        $(document).ready(() => {
+            $('a.expand-info').on('click', function (e) {
+                const idx = $(this).data('expand-item');
+                const metaBox = $('.pic-metadata.info-' + idx);
+                $('.pic-metadata.info-' + idx).toggle();
+            });
+        });
     });
 </script>
 {% endblock %}
 
 {% block content %}
 
-{% for item in files %}
-<div class="gallery-item" style="width: 200px">
-    <a class="fancybox" rel="group" href="{{ app_path }}page{{ item.relpath }}?width=800">
-        <img src="{{ app_path }}page{{ item.relpath }}?width=200&amp;normalize=1" />
-    </a>
-    <div class="metadata">
-        {{ item.exif_datetime }},
-        {{ item.exif_image_width }} x {{ item.exif_image_height }} {{item.exif_orientation}}
-        {{ item.size }}, {{ item.exif_model }}</div>
+<div class="pic-grid">
+    {% for item in files %}
+    <div class="gallery-item" style="width: 200px">
+        <a class="fancybox" rel="group" href="{{ app_path }}page{{ item.relpath }}?width=800">
+            <img src="{{ app_path }}page{{ item.relpath }}?width=200&amp;normalize=1" />
+        </a>
+        <div class="pic-metadata info-{{ loop.index }}">
+            <dl>
+                <dt>size</dt>
+                <dd>{{ item.metadata.image_width }} x {{ item.metadata.image_height }}
+                    {% if item.metadata.orientation %}{{item.metadata.orientation}}{% endif %}
+                </dd>
+                {% if item.metadata.camera %}
+                <dt>camera</dt>
+                <dd>
+                    {{ item.metadata.camera }}
+                </dd>
+                {% endif %}
+                {% if item.metadata.datetime %}
+                    <dt>date and time</dt>
+                    <dd>{{ item.metadata.datetime }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+        <div class="metadata">
+            <div class="dt">
+                {% if item.metadata.datetime %}{{ item.metadata.datetime }}{% else %}-{% endif %}
+            </div>
+            <a class="expand-info" data-expand-item="{{ loop.index }}">info</a>
+        </div>
+    </div>
+    {% endfor %}
 </div>
-{% endfor %}
 
 {% endblock %}

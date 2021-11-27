@@ -17,17 +17,15 @@ import json
 import os
 import logging
 from logging import handlers
-import hashlib
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, LetterCase
 from typing import List
 
 import markdown
 from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
-from PIL import Image
-import PIL.ExifTags
 
 import files
+import pictures
 
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
@@ -197,28 +195,16 @@ class Plain(Action):
 
 class Gallery(Action):
 
-    @staticmethod
-    def _get_exif(img):
-        return dict((PIL.ExifTags.TAGS[k], v) for k, v in img._getexif().items() if k in PIL.ExifTags.TAGS)
-
     def GET(self, path):
         path = import_path(path)
-        gallery_fs_dir = os.path.dirname('%s/%s' % (self.data_dir, path))
+        gallery_fs_dir = os.path.dirname(os.path.join(self.data_dir, path))
         images = files.list_files(gallery_fs_dir, files.file_is_image, recursive=False)
         parent_dir = os.path.dirname(os.path.dirname(path))
 
-        extended = []
+        extended: List[files.FileInfo] = []
         for img in images:
             info = files.get_file_info(img, path_prefix=self.data_dir)
-            exif = self._get_exif(Image.open(img))
-            info['exif_datetime'] = exif.get('DateTime')
-            info['exif_model'] = '{} ({})'.format(exif.get('Model'), exif.get('Make'))
-            info['exif_orientation'] = exif.get('Orientation')
-            info['exif_light_source'] = exif.get('LightSource')
-            info['exif_exposure_time'] = exif.get('ExposureTime')
-            info['exif_scene_type'] = exif.get('SceneType')
-            info['exif_image_width'] = exif.get('ExifImageWidth')
-            info['exif_image_height'] = exif.get('ExifImageHeight')
+            info.metadata = pictures.get_metadata(img)
             extended.append(info)
         page_list = files.strip_prefix(
             files.list_files(
@@ -227,10 +213,11 @@ class Gallery(Action):
                 recursive=False,
                 include_dirs=True), self.data_dir)
         page_list = map(lambda x: (x, os.path.basename(x)), page_list)
-        values = dict(files=extended,
-                      page_list=page_list,
-                      parent_dir=parent_dir,
-                      curr_dir_name=self.get_current_dirname(path))
+        values = dict(
+            files=extended,
+            page_list=page_list,
+            parent_dir=parent_dir,
+            curr_dir_name=self.get_current_dirname(path))
         return self._render('gallery.html', values)
 
 
@@ -238,16 +225,6 @@ class Picture(Action):
     """
     Provides access to images
     """
-
-    @staticmethod
-    def _get_thumbnail_path(url_path, size):
-        code = hashlib.md5(f'{url_path}-{size[0]}-{size[1]}').hexdigest()
-        return os.path.join(conf.picture_cache_dir, f'{code}.jpg')
-
-    @staticmethod
-    def _calc_size(img, new_width):
-        w, h = img.size
-        return int(round(float(new_width) * h / w))
 
     def GET(self, path, img_type):
         content_types = {
@@ -262,15 +239,11 @@ class Picture(Action):
         width = args.width
         normalize = bool(int(args.normalize))
         if width is not None:
-            img = Image.open(fs_path)
-            size = (int(width), self._calc_size(img, width))
-            thumb_path = self._get_thumbnail_path(path, size)
-            if not os.path.isfile(thumb_path):
-                img.thumbnail(size, Image.ANTIALIAS)
-                if img.size[0] < img.size[1] and normalize:
-                    img = img.crop((0, 0, size[0], int(round(200. * 3 / 4))))
-                img.save(thumb_path, 'JPEG', quality=90)  # TODO
-            fs_path = thumb_path
+            fs_path = pictures.get_resized_image(
+                cache_dir=conf.picture_cache_dir,
+                path=fs_path,
+                width=width,
+                normalize=normalize)
         with open(fs_path, 'rb') as image:
             web.header('Content-Type', content_types.get(img_type, 'image/jpeg'))
             return image.read()

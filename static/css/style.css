@@ -74,6 +74,8 @@ p em, p strong {
     color: #b32d45;
 }
 
+/*   ---- navigation ----- */
+
 menu {
     grid-row: 1 / span 2;
     font-family: 'Roboto Condensed', sans-serif;
@@ -110,6 +112,22 @@ menu > ul li {
     margin: 0;
 }
 
+menu .page-list a {
+    color: #E3FC93;
+    text-decoration: none;
+}
+
+menu .page-list a:hover {
+    text-decoration: underline;
+}
+
+menu .page-list .current {
+    font-weight: bold;
+    text-decoration: none;
+}
+
+/* ---------- general page ------------------- */
+
 section.main {
     background-color: #EEEEEE;
     padding: 2em 3em 1.3em 1.3em;
@@ -122,7 +140,74 @@ section.main ul.page-list {
     font-size: 110%;
 }
 
-pre {
+/* ---------- gallery page ------------------- */
+
+section.main .pic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    justify-content: space-around;
+    row-gap: 20px;
+    column-gap: 5px;
+}
+
+
+section.main .pic-grid .pic-metadata {
+    display: none;
+    position: absolute;
+    background-color: #333333;
+    color: #eeeeee;
+    width: 200px;
+    height: 150px;
+    padding: 5px;
+    font-size: 0.7em;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+section.main .pic-grid .pic-metadata dl {
+    margin: 0;
+    padding: 0;
+}
+
+section.main .pic-grid .pic-metadata dl dt {
+    font-weight: bold;
+}
+
+section.main .pic-grid .pic-metadata dl dd,
+section.main .pic-grid .pic-metadata dl dt {
+    margin: 0;
+    padding: 0;
+}
+
+.gallery-item {
+    box-shadow: 2px 2px 3px #aaa;
+    display: flex;
+    flex-direction: column;
+}
+
+.gallery-item a.fancybox {
+    flex-grow: 1;
+}
+
+.gallery-item .metadata {
+    display: flex;
+    align-items: center;
+    font-size: 70%;
+}
+
+.gallery-item .metadata .dt {
+    flex-grow: 1;
+}
+
+.gallery-item .metadata a.expand-info {
+    cursor: pointer;
+    margin-right: 1em;
+    font-size: 1.2em;
+}
+
+/* ---------- text page ----------------------- */
+
+section.main pre {
     background: none repeat scroll 0 0 #F5F5F5;
     border: 1px solid #D5D5D5;
     border-radius: 4px;
@@ -133,43 +218,45 @@ pre {
     position: relative;
 }
 
-table {
+section.main table {
     border-collapse: collapse;
 }
 
-table td, table th {
+section.main table td, table th {
     padding: 3px 10px;
     border: 1px solid #D5D5D5;
 }
 
-table tr:first-child th {
+section.main table tr:first-child th {
     border-top: 0;
 }
 
-table tr:last-child td {
+section.main table tr:last-child td {
     border-bottom: 0;
 }
 
-table tr td:first-child,
-table tr th:first-child {
+section.main table tr td:first-child,
+section.main table tr th:first-child {
     border-left: 0;
 }
 
-table tr td:last-child,
-table tr th:last-child {
+section.main table tr td:last-child,
+section.main table tr th:last-child {
     border-right: 0;
 }
 
-a.external {
+section.main a.external {
     background-image: url('../img/external-link.png');
     background-repeat: no-repeat;
     background-position: 100% 2px;
     padding-right: 12px;
 }
 
-.navigation {
+section.main .navigation {
     line-height: 2.5em;
 }
+
+/* --------------- search box ------------------ */
 
 .search {
     margin-bottom: 20px;
@@ -197,41 +284,9 @@ ul li .srch-chapter {
     white-space: nowrap;
 }
 
-.gallery-item {
-    display: inline-block;
-    box-shadow: 2px 2px 3px #aaa;
-    margin-bottom: 10px;
-    margin-right: 7px;
-}
-
-.gallery-item .metadata {
-    display: inline;
-    font-size: 70%;
-    line-height: 0.3em;
-}
-
-.gallery-item a {
-    display: block;
-}
-
-menu .page-list a {
-    color: #E3FC93;
-    text-decoration: none;
-}
-
 .wildcard {
     color: #E3FC93;
 }
-
-menu .page-list a:hover {
-    text-decoration: underline;
-}
-
-menu .page-list .current {
-    font-weight: bold;
-    text-decoration: none;
-}
-
 
 @media screen and (max-width: 1200px) {
 
