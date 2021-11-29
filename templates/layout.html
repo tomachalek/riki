@@ -30,25 +30,14 @@
     </head>
     <body>
         <div class="contents">
+            <div class="path">
+                <a class="home" href="{{ app_path }}page"><strong>&#x2302</strong></a> /
+                {% for path_elm, path_cumul in path_elms %}
+                <a href="{{ app_path }}page/{{ path_cumul }}">{{ path_elm }}</a> /
+                {% endfor %}
+                {{ page_name }}
+            </div>
             <menu>
-                {% if enable_search %}
-                <form class="search" action="{{ app_path }}_search" method="GET">
-                    <label><input type="checkbox" name="wildcard_query" value="1"
-                        {% if wildcard_query %}checked="checked"{% endif %}/> use wildcards &quot;*&quot; &amp; &quot;?&quot;</label>
-                    <input type="text" name="query" value="{{ query }}" />
-                    <button type="submit" title="search">&#128270;</button>
-                </form>
-                {% endif %}
-
-                <div class="navigation">
-                {% if parent_dir %}
-                <a href="{{ app_path }}page/{{ parent_dir }}">/{{ parent_dir }}</a> /
-                {% else %}
-                <a class="home" href="{{ app_path }}page">home</a> /
-                {% endif %}
-                {{ curr_dir_name }}:
-                </div>
-
                 {% if page_list %}
                 <ul class="page-list">
                 {% for item in page_list %}
@@ -70,9 +59,16 @@
                 <div class="utils">
                     <strong>shortcuts:</strong>
                     <ul>
-                        <li><strong><a href="{{ app_path }}">&#8678; home</a></strong></li>
                         <li><a href="{{ app_path }}_images">images</a></li>
                     </ul>
+                    <div class="search">
+                        {% if enable_search %}
+                        <form class="search" action="{{ app_path }}_search" method="GET">
+                            <input type="text" name="query" value="{{ query }}" />
+                            <button type="submit" title="search">&#128270;</button>
+                        </form>
+                        {% endif %}
+                    </div>
                 </div>
             </menu>
             <section class="main">

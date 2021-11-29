@@ -17,47 +17,20 @@ import json
 import os
 import logging
 from logging import handlers
-from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json, LetterCase
-from typing import List
+from typing import List, Tuple
 
 import markdown
 from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
 
 import files
 import pictures
+import search
+import appconf
 
 
-@dataclass_json(letter_case=LetterCase.CAMEL)
-@dataclass
-class Conf:
-    app_path: str
-    data_dir: str
-    log_path: str
-    template_cache_dir: str
-    picture_cache_dir: str
-    hg_info_encoding: str
-    markdown_extensions: List[str] = field(default_factory=lambda: [])
-    app_name: str = field(default='Riki')
-
-
-with open(os.path.realpath(os.path.join(os.path.dirname(__file__), 'config.json'))) as fr:
-    conf: Conf = Conf.from_json(fr.read())
-
+conf = appconf.load_conf()
 APP_NAME = conf.app_name
 APP_PATH = conf.app_path
-
-
-urls = (
-    '', 'Index',
-    '/', 'Index',
-    '/_images', 'Images',
-    '/page(/.+\\.txt)', 'Plain',
-    '/page(/.+\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF))', 'Picture',
-    '/page(/.*)?', 'Page',
-    '/gallery(/.*)?', 'Gallery',
-    '/_search', 'Search'
-)
 
 
 def setup_logger(path, debug=False):
@@ -95,6 +68,16 @@ def import_path(path):
     elif path[0] == '/':
         path = path[1:]
     return path
+
+
+def path_dir_elms(path: str) -> List[Tuple[str, str]]:
+    items = [x for x in path.split('/') if x != '']
+    cumul = []
+    ans = []
+    for elm in items:
+        cumul.append(elm)
+        ans.append((elm, '/'.join(cumul[:])))
+    return ans
 
 
 def load_markdown(path):
@@ -155,10 +138,11 @@ class Action(object):
     def _render(self, tpl_path, data, content_type='text/html'):
         template = open_template(tpl_path)
         web.header('Content-Type', content_type)
-        values = dict(app_name=APP_NAME,
-                      app_path=APP_PATH,
-                      enable_search=False, # TODO
-                      wildcard_query=self._wildcard_query)
+        values = dict(
+            app_name=APP_NAME,
+            app_path=APP_PATH,
+            enable_search=True, # TODO
+            wildcard_query=self._wildcard_query)
         values.update(data)
         return template.render(**values)
 
@@ -216,7 +200,7 @@ class Gallery(Action):
         values = dict(
             files=extended,
             page_list=page_list,
-            parent_dir=parent_dir,
+            path_elms=path_dir_elms(path),
             curr_dir_name=self.get_current_dirname(path))
         return self._render('gallery.html', values)
 
@@ -277,11 +261,11 @@ class Page(Action):
 
         # setup the directory information
         if curr_dir:
-            parent_dir = os.path.dirname(curr_dir)
+            path_elms = path_dir_elms(curr_dir)
             curr_dir_fs = os.path.join(self.data_dir, curr_dir)
         else:
-            curr_dir = u"\u2302"
-            parent_dir = None
+            curr_dir = ''
+            path_elms = []
             curr_dir_fs = self.data_dir
 
         # transform the page
@@ -300,12 +284,13 @@ class Page(Action):
                 include_dirs=True), self.data_dir)
         page_list = [(x, os.path.basename(x)) for x in page_list]
         logging.getLogger(__name__).warning('page_list: {}'.format(page_list))
-        data = dict(html=inner_html,
-                    page_list=page_list,
-                    parent_dir=parent_dir,
-                    page_info=page_info,
-                    page_name=page_name,
-                    curr_dir_name=self.get_current_dirname(curr_dir))
+        data = dict(
+            html=inner_html,
+            page_list=page_list,
+            path_elms=path_elms,
+            page_info=page_info,
+            page_name=page_name,
+            curr_dir_name=self.get_current_dirname(curr_dir))
         return self._render(page_template, data)
 
 
@@ -314,44 +299,15 @@ class Search(Action):
     Search results page
     """
     def GET(self):
-        es = Elasticsearch(conf['fulltext']['serviceUrl'])
-        if web.input(wildcard_query=None).wildcard_query:
-            query = {
-                "wildcard": {
-                    "_all": web.input().query
-                }
-            }
-            self.set_wildcard_query(True)
-        else:
-            query = {
-                "multi_match": {
-                    "query": web.input().query,
-                    "operator": "and",
-                    "fields": ["text", "pageName", "tags"]
-                }
-            }
-            self.set_wildcard_query(False)
-        res = es.search(index=conf['fulltext']['indexName'],
-                        body={"query": query,
-                              "fields": ["pageName", "path", "fsPath", "text"]})
-        rows = []
-        for a in res['hits']['hits']:
-            fields = a['fields']
-
-            fs_path = os.path.normpath('%s/%s.md' % (self.data_dir, fields['path'][0]))
-            page_chapters, h1 = extract_description(fs_path)
-            rows.append({
-                'h1': h1 if h1 else fields['path'][0],
-                'file': fields['path'][0],
-                'chapters': page_chapters
-            })
-        values = dict(query=web.input().query, ans=rows)
+        srch = search.FulltextSearcher(conf.search_index_dir, conf.data_dir)
+        rows = srch.search(web.input().query)
+        values = dict(query=web.input().query, rows=rows)
         return self._render('search.html', values)
 
 # web.config.debug = False
-app = web.application(urls, globals(), autoreload=False)
+app = web.application(appconf.ROUTES, globals(), autoreload=False)
 application = app.wsgifunc()
 
-if __name__ == "__main__":
-    app = web.application(urls, globals())
+if __name__ == '__main__':
+    app = web.application(appconf.ROUTES, globals())
     app.run()
