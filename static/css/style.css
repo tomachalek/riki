@@ -274,6 +274,15 @@ ul.search-result > li {
     margin: 0 0 1.5em 0;
 }
 
+ul.search-result > li h2 a.path {
+    text-decoration: none;
+    font-size: 0.9em;
+}
+
+ul.search-result > li a.path:hover {
+    text-decoration: underline;
+}
+
 ul li .match {
     color: #f73e5f;
 }
@@ -320,6 +329,12 @@ ul li .match {
     menu .utils ul {
         margin-top: 0;
         padding-top: 0;
+        display: inline-block;
+    }
+
+    menu .utils ul li {
+        margin: 0;
+        padding: 0;
     }
 
     menu .page-list {
@@ -336,5 +351,9 @@ ul li .match {
 
 @media screen and (max-width: 479px) {
 
+    ul.search-result > li h2 a.path {
+        text-decoration: none;
+        font-size: 0.7em;
+    }
 
 }

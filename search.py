@@ -15,7 +15,7 @@
 from whoosh.fields import Schema, TEXT, KEYWORD, ID, STORED
 from whoosh.analysis import StemmingAnalyzer
 from whoosh import index, writing
-from whoosh.qparser import QueryParser
+from whoosh.qparser import MultifieldParser
 from bs4 import BeautifulSoup
 from markdown import markdown
 import os
@@ -59,11 +59,11 @@ class FulltextSearcher(Fulltext):
         self._data_dir = data_dir
 
     def search(self, q: str):
-        qp = QueryParser('body', schema=self._schema)
-        q = qp.parse(q)
+        qp = MultifieldParser(['body', 'tags'], schema=self._schema)
+        q_obj = qp.parse(q)
         ans = []
         with self._index.searcher() as srch:
-            for hit in srch.search(q):
+            for hit in srch.search(q_obj):
                 item = dict(hit)
                 full_path = os.path.join(self._data_dir, hit['path'])
                 with open(full_path) as fr:
