@@ -47,3 +47,13 @@ ROUTES = (
     '/gallery(/.*)?', 'Gallery',
     '/_search', 'Search'
 )
+
+
+RAW_FILES = {
+    'pdf': 'application/pdf',
+    'txt': 'text/plain',
+    'json': 'application/json',
+    'xml': 'text/xml',
+    'yml': 'text/yaml',
+    'yaml': 'text/yaml'
+}

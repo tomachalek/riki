@@ -243,6 +243,8 @@ class Page(Action):
 
         path = import_path(path)
         page_fs_path = os.path.join(self.data_dir, path)
+        pelms = page_fs_path.rsplit('.', 1)
+        page_suff = None if len(pelms) < 2 else pelms[-1]
 
         if files.page_is_dir(page_fs_path):
             try:
@@ -254,6 +256,10 @@ class Page(Action):
                 raise web.seeother(f'{APP_PATH}gallery/{path}/index')
             else:
                 raise web.seeother(f'{APP_PATH}page/{path}/index')
+        elif page_suff and page_suff in appconf.RAW_FILES:
+            with open(page_fs_path, 'rb') as fr:
+                web.header('Content-Type', appconf.RAW_FILES[page_suff])
+                return fr.read()
         else:
             page_fs_path = f'{page_fs_path}.md'
             curr_dir = os.path.dirname(path)
