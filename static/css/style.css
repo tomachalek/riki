@@ -147,6 +147,7 @@ section.main .pic-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     justify-content: space-around;
+    justify-items: center;
     row-gap: 20px;
     column-gap: 5px;
 }
@@ -291,6 +292,12 @@ ul li .match {
         background-color: #EEEEEE;
     }
 
+    .contents > .path {
+        grid-column: 1;
+        padding-left: 1.4em;
+        padding-bottom: 0.7em;
+    }
+
     menu {
         grid-row: 1;
 	    font-size: 120%;
@@ -324,5 +331,10 @@ ul li .match {
         min-height: auto;
         border-radius: 0;
     }
+}
+
+
+@media screen and (max-width: 479px) {
+
 
 }
