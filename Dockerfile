@@ -4,7 +4,7 @@ RUN apt-get update
 RUN apt-get -y install build-essential
 
 RUN pip3 install --upgrade pip
-RUN pip3 install jinja2 web.py dataclasses-json Whoosh Pillow markdown mercurial defusedxml
+RUN pip3 install jinja2 web.py dataclasses-json Whoosh Pillow markdown mercurial defusedxml beautifulsoup4
 
 
 RUN mkdir /opt/riki

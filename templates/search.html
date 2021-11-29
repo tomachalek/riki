@@ -4,13 +4,9 @@
 Search for <em class="search-term">{{ query }}</em>:
 
 <ul class="search-result">
-{% for row in ans %}
-    <li><a href="{{ app_path }}page/{{ row.file }}"><strong>{{ row.h1 }}</strong></a>
-        <p>
-            {% for chapter in row.chapters %}
-            <span class="srch-chapter">{{ chapter }}</span>
-            {% endfor %}
-        </p>
+{% for row in rows %}
+    <li><a href="{{ app_path }}page/{{ row.path }}"><strong>{{ row.path }}</strong></a>
+        <div>{{ row.highlight }}</div>
     </li>
 {% endfor %}
 </ul>
