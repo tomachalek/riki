@@ -5,7 +5,7 @@ Search for <em class="search-term">{{ query }}</em>:
 
 <ul class="search-result">
 {% for row in rows %}
-    <li><a href="{{ app_path }}page/{{ row.path }}"><strong>{{ row.path }}</strong></a>
+    <li><h2><a class="path" href="{{ app_path }}page/{{ row.path }}">/{{ row.path }}</a></h2>
         <div>{{ row.highlight }}</div>
     </li>
 {% endfor %}
