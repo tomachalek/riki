@@ -38,6 +38,17 @@
                 {{ page_name }}
             </div>
             <menu>
+                <div class="utils">
+                    <div class="search">
+                        {% if enable_search %}
+                        <form class="search" action="{{ app_path }}_search" method="GET">
+                            <input type="text" name="query" value="{{ query }}" />
+                            <button type="submit" title="search">&#128270;</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+
                 {% if page_list %}
                 <ul class="page-list">
                 {% for item in page_list %}
@@ -51,31 +62,23 @@
                 {% endfor %}
                 </ul>
                 {% else %}
-                <ul>
-                    <li>--</li>
-                </ul>
-                {% endif %}
-
-                <div class="utils">
-                    <strong>links:</strong>
-                    <ul class="links">
-                        <li><a href="{{ app_path }}_images">images</a></li>
-                    </ul>
-                    <div class="search">
-                        {% if enable_search %}
-                        <form class="search" action="{{ app_path }}_search" method="GET">
-                            <input type="text" name="query" value="{{ query }}" />
-                            <button type="submit" title="search">&#128270;</button>
-                        </form>
-                        {% endif %}
+                    <div class="menu-alt">
+                    {% block menu_content %}
+                    {% endblock %}
                     </div>
-                </div>
+                {% endif %}
             </menu>
             <section class="main">
                 {% block content %}
                 {% endblock %}
             </section>
             <footer>
+                <div class="links">
+                    <strong>links:</strong>
+                    <ul>
+                        <li><a href="{{ app_path }}_images">images</a></li>
+                    </ul>
+                </div>
                 {% block footer %}
                 {% endblock %}
             </footer>

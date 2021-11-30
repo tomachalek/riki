@@ -8,10 +8,11 @@
 {% block footer %}
 <p>
     last change: <strong>{{ page_info.date }}</strong> by <strong>{{ page_info.user }}</strong>
+    {% if page_info.changeset %}
+    <br />
+    revision: <strong>{{ page_info.changeset }}</strong> ({{ page_info.summary }})
+    {% endif %}
 </p>
-{% if page_info.changeset %}
-<p>revision: {{ page_info.changeset }} ({{ page_info.summary }})</p>
-{% endif %}
 {% endblock %}
 
 {% block script %}
