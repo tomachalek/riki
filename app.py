@@ -289,7 +289,6 @@ class Page(Action):
             files.list_files(curr_dir_fs, None, recursive=False,
                 include_dirs=True), self.data_dir)
         page_list = [(x, os.path.basename(x)) for x in page_list]
-        logging.getLogger(__name__).warning('page_list: {}'.format(page_list))
         data = dict(
             html=inner_html,
             page_list=page_list,
