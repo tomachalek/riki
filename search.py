@@ -112,7 +112,11 @@ def index_recursive(data_root: str, rel_path: str, fulltext: FulltextWriter):
 
 
 if __name__ == '__main__':
-    with open(os.path.realpath(os.path.join(os.path.dirname(__file__), 'config.json'))) as fr:
+    if 'RIKI_CONF_PATH' in os.environ:
+        conf_path = os.environ['RIKI_CONF_PATH']
+    else:
+        conf_path = os.path.realpath(os.path.join(os.path.dirname(__file__), 'config.json'))
+    with open(conf_path) as fr:
         conf: Conf = Conf.from_json(fr.read())
     argparser = argparse.ArgumentParser(description="Markdown file indexer")
     argparser.add_argument(
