@@ -10,7 +10,7 @@ body {
 div.contents {
     display: grid;
     grid-template-columns: 20em auto;
-    grid-template-rows: 2em auto 4em;
+    grid-template-rows: 2.6em auto 4em;
     background: linear-gradient(#242222 0%, #191818 80%, #575757);
     padding-top: 0.4em;
     padding-right: 0.4em;
@@ -22,12 +22,16 @@ header {
 
 footer {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     background-color: transparent;
     font-size: 70%;
     color: #dFdFdF;
     padding: 1em;
+}
+
+footer a {
+    color: #dedede;
 }
 
 footer p {
@@ -36,6 +40,22 @@ footer p {
 
 footer p strong {
     color: inherit;
+}
+
+footer .links {
+    flex-grow: 1;
+}
+
+footer .links ul {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+    display: inline-flex;
+}
+
+footer .links ul li {
+    margin: 0;
+    padding: 0;
 }
 
 a {
@@ -79,6 +99,19 @@ p em, p strong {
 .contents > .path {
     grid-column: 1 / span 2;
     padding-left: 1.4em;
+}
+
+.contents > .path a {
+    text-decoration: none;
+}
+
+.contents > .path a:hover {
+    text-decoration: underline;
+}
+
+.contents > .path a.home {
+    font-weight: bold;
+    font-size: 1.4em;
 }
 
 menu {
@@ -125,6 +158,12 @@ menu .page-list a:hover {
 menu .page-list .current {
     font-weight: bold;
     text-decoration: none;
+}
+
+menu .menu-alt {
+    color: #E3FC93;
+    padding: 0.4em;
+    font-size: 2em;
 }
 
 /* ---------- general page ------------------- */
@@ -316,29 +355,18 @@ ul li .match {
 	    font-size: 120%;
     }
 
-    menu ul {
+    menu ul.page-list {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     }
 
-    menu ul li {
+    menu ul.page-list li {
         display: inline-block;
         text-align: center;
     }
 
-    menu ul li:not(last-child) {
+    menu ul.page-list li:not(last-child) {
         margin-right: 2em;
-    }
-
-    menu .utils ul {
-        margin-top: 0;
-        padding-top: 0;
-        display: inline-block;
-    }
-
-    menu .utils ul li {
-        margin: 0;
-        padding: 0;
     }
 
     menu .page-list {
@@ -358,6 +386,16 @@ ul li .match {
     ul.search-result > li h2 a.path {
         text-decoration: none;
         font-size: 0.7em;
+    }
+
+    menu ul.page-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    menu ul.page-list li {
+        display: inline-block;
+        text-align: left;
     }
 
 }
