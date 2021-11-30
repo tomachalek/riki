@@ -27,8 +27,11 @@ import pictures
 import search
 import appconf
 
-
-conf = appconf.load_conf()
+if 'RIKI_CONF_PATH' in os.environ:
+    conf_path = os.environ['RIKI_CONF_PATH']
+else:
+    conf_path = os.path.realpath(os.path.join(os.path.dirname(__file__), 'config.json'))
+conf = appconf.load_conf(conf_path)
 APP_NAME = conf.app_name
 APP_PATH = conf.app_path
 
@@ -48,18 +51,15 @@ def setup_logger(path, debug=False):
     logger.setLevel(logging.INFO if not debug else logging.DEBUG)
 
 
+setup_logger(str(conf.log_path))
+logging.getLogger(__name__).info(f'using Riki configuration {conf_path}')
+
 def open_template(filename):
     cache = FileSystemBytecodeCache(conf.template_cache_dir)
     env = Environment(
         loader=FileSystemLoader(os.path.realpath(os.path.join(os.path.dirname(__file__), 'templates'))),
         bytecode_cache=cache)
     return env.get_template(filename)
-
-
-
-setup_logger(str(conf.log_path))
-
-
 
 
 def import_path(path):
