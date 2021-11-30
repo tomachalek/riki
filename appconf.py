@@ -32,8 +32,8 @@ class Conf:
     app_name: str = field(default='Riki')
 
 
-def load_conf() -> Conf:
-    with open(os.path.realpath(os.path.join(os.path.dirname(__file__), 'config.json'))) as fr:
+def load_conf(path: str) -> Conf:
+    with open(path) as fr:
         return Conf.from_json(fr.read())
 
 
