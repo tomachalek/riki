@@ -2,12 +2,17 @@
 
 
 {% block content %}
-<h1>index of &quot;{{ curr_dir_name }}&quot;</h1>
+{% if curr_dir_name %}
+    <h1>index of &quot;{{ curr_dir_name }}&quot;</h1>
+{% else %}
+    <h1>index of <strong>&#x2302</strong></h1>
+{% endif %}
 <ul class="page-list">
 {% for item in page_list %}
 <li><a href="{{ app_path }}page{{ item[0] }}">{{ item[1] }}</a></li>
 {% endfor %}
 </ul>
+<p>(auto-generated index)</p>
 {% endblock %}
 
 {% block footer %}
