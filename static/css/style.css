@@ -220,6 +220,10 @@ section.main pre {
     position: relative;
 }
 
+section.main img[src$='#flexible'] {
+    width: 100%;
+}
+
 section.main table {
     border-collapse: collapse;
 }
