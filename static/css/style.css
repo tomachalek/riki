@@ -259,8 +259,28 @@ section.main pre {
     position: relative;
 }
 
+section.main img {
+    max-width: 100%;
+}
+
 section.main img[src$='#flexible'] {
     width: 100%;
+    max-width: 1600px;
+}
+
+section.main img[src$='#max400'] {
+    max-width: 400px;
+    object-fit: contain;
+}
+
+section.main img[src$='#max600'] {
+    max-width: 600px;
+    object-fit: contain;
+}
+
+section.main img[src$='#max800'] {
+    max-width: 600px;
+    object-fit: contain;
 }
 
 section.main table {
@@ -362,7 +382,7 @@ ul li .match {
 
     menu ul.page-list li {
         display: inline-block;
-        text-align: center;
+        text-align: left;
     }
 
     menu ul.page-list li:not(last-child) {
