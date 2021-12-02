@@ -12,7 +12,6 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-import os
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, LetterCase
 from typing import List, Optional
@@ -29,6 +28,7 @@ class Conf:
     hg_info_encoding: str
     search_index_dir: Optional[str] = None
     markdown_extensions: List[str] = field(default_factory=lambda: [])
+    emoji_cdn_url: Optional[str] = None
     app_name: str = field(default='Riki')
 
 
