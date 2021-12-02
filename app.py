@@ -21,6 +21,7 @@ from typing import List, Tuple
 
 import markdown
 from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
+import pymdownx.emoji
 
 import files
 import pictures
@@ -53,6 +54,18 @@ def setup_logger(path, debug=False):
 
 setup_logger(str(conf.log_path))
 logging.getLogger(__name__).info(f'using Riki configuration {conf_path}')
+
+
+markdown_config = {
+    'pymdownx.emoji': {
+        'emoji_index': pymdownx.emoji.twemoji,
+        'emoji_generator': pymdownx.emoji.to_svg,
+        'options': {
+            'image_path': conf.emoji_cdn_url
+        }
+    }
+}
+
 
 def open_template(filename):
     cache = FileSystemBytecodeCache(conf.template_cache_dir)
@@ -93,27 +106,8 @@ def load_markdown(path):
     with open(path) as page_file:
         return markdown.markdown(
             page_file.read(),
-            extensions=conf.markdown_extensions)
-
-
-def extract_description(md_path):
-    """
-    extracts a text from an HTML code
-
-    arguments:
-    md_path -- path to a markdown file to be analyzed
-    """
-    import BeautifulSoup
-
-    md_src = load_markdown(md_path)
-    soup = BeautifulSoup.BeautifulSoup(md_src)
-    h1 = soup.find('h1')
-    if h1:
-        h1_text = h1.text
-    else:
-        h1_text = ''
-    h2 = soup.findAll(['h2', 'h3'])
-    return [x.text for x in h2], h1_text
+            extensions=conf.markdown_extensions,
+            extension_configs=markdown_config)
 
 
 class Action(object):

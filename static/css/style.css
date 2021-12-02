@@ -283,6 +283,10 @@ section.main img[src$='#max800'] {
     object-fit: contain;
 }
 
+section.main img.twemoji {
+    width: 1.2em;
+}
+
 section.main table {
     border-collapse: collapse;
 }

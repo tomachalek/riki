@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-from whoosh.fields import Schema, TEXT, KEYWORD, ID, STORED
+from whoosh.fields import Schema, TEXT, KEYWORD, ID
 from whoosh.analysis import StemmingAnalyzer
 from whoosh import index, writing
 from whoosh.qparser import MultifieldParser
@@ -109,6 +109,23 @@ def index_recursive(data_root: str, rel_path: str, fulltext: FulltextWriter):
         elif os.path.isdir(file_path):
             index_recursive(data_root, os.path.join(rel_path, item), fulltext)
 
+
+# TODO do we need this?
+def extract_description(html: str):
+    """
+    extracts a text from an HTML code
+
+    arguments:
+    md_path -- path to a markdown file to be analyzed
+    """
+    soup = BeautifulSoup.BeautifulSoup(html)
+    h1 = soup.find('h1')
+    if h1:
+        h1_text = h1.text
+    else:
+        h1_text = ''
+    h2 = soup.findAll(['h2', 'h3'])
+    return [x.text for x in h2], h1_text
 
 
 if __name__ == '__main__':
