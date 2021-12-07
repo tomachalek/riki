@@ -1,0 +1,1 @@
+KaTeX fonts should go here. See https://github.com/KaTeX/KaTeX/tree/main/fonts

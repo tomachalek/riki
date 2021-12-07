@@ -7,6 +7,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Merriweather&family=Open+Sans:wght@400;700&family=Roboto+Condensed:wght@300&display=swap" rel="stylesheet">
         <link type="text/css" rel="stylesheet" href="{{ app_path }}static/css/style.css"/>
         <link type="text/css" rel="stylesheet" href="{{ app_path }}static/css/jquery.fancybox.css"/>
+        <link type="text/css" rel="stylesheet" href="{{ app_path }}static/css/katex.min.css" crossorigin="anonymous">
         <meta charset="utf-8" />
         <title>{{app_name}} {% if page_title %} - {{ page_title }}{% endif %}</title>
         <script type="text/javascript" src="{{ app_path }}static/js/requirejs.min.js"></script>
@@ -15,11 +16,15 @@
                 baseUrl: "{{ app_path }}static/js",
                 paths: {
                     "jquery": "jquery.min",
-                    "fancybox": "fancybox.min"
+                    "fancybox": "fancybox.min",
+                    "katex": "katex.min"
                 },
                 shim: {
                     "fancybox": {
-                        "deps": ['jquery']
+                        "deps": ["jquery"]
+                    },
+                    "katex": {
+                        "exports": "katex"
                     }
                 }
             });
