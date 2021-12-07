@@ -268,6 +268,16 @@ section.main img[src$='#flexible'] {
     max-width: 1600px;
 }
 
+section.main img[src$='#max200'] {
+    max-width: 200px;
+    object-fit: contain;
+}
+
+section.main img[src$='#max300'] {
+    max-width: 300px;
+    object-fit: contain;
+}
+
 section.main img[src$='#max400'] {
     max-width: 400px;
     object-fit: contain;

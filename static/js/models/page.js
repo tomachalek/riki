@@ -17,15 +17,28 @@
 /**
  * Wiki-pages functionality
  */
-define(['jquery', 'models/layout'], function ($, layout) {
+define(['jquery', 'models/layout', 'katex'], function ($, layout, katex) {
     'use strict';
 
     var lib = {};
 
     function isExternalLink(link) {
-        var url = $(link).attr('href') || '';
+        const url = $(link).attr('href') || '';
 
         return url.indexOf('http') === 0;
+    }
+
+    function applyKatex() {
+        const maths = document.querySelectorAll('.arithmatex');
+        for (let i = 0; i < maths.length; i++) {
+            const tex = maths[i].textContent || maths[i].innerText;
+            if (tex.startsWith('\\(') && tex.endsWith('\\)')) {
+                katex.render(tex.slice(2, -2), maths[i], {'displayMode': false});
+
+            } else if (tex.startsWith('\\[') && tex.endsWith('\\]')) {
+                katex.render(tex.slice(2, -2), maths[i], {'displayMode': true});
+            }
+        }
     }
 
     lib.init = function () {
@@ -36,6 +49,7 @@ define(['jquery', 'models/layout'], function ($, layout) {
                 $(this).attr('target', '_blank');
             }
         });
+        applyKatex();
     };
 
     return lib;

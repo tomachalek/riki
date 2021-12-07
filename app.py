@@ -63,6 +63,10 @@ markdown_config = {
         'options': {
             'image_path': conf.emoji_cdn_url
         }
+    },
+    'pymdownx.arithmatex': {
+        'generic': True,
+        'preview': False
     }
 }
 
