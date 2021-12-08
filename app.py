@@ -15,6 +15,7 @@
 import web
 import json
 import os
+import sys
 import logging
 from logging import handlers
 from typing import List, Tuple
@@ -36,6 +37,8 @@ conf = appconf.load_conf(conf_path)
 APP_NAME = conf.app_name
 APP_PATH = conf.app_path
 
+logger = logging.getLogger('')
+
 
 def setup_logger(path, debug=False):
     """
@@ -45,8 +48,12 @@ def setup_logger(path, debug=False):
     path -- where the log files will be written
     debug -- debug mode on/off (bool)
     """
-    logger = logging.getLogger('')
-    hdlr = handlers.RotatingFileHandler(path, maxBytes=(1 << 23), backupCount=50)
+    if path == '#stderr':
+        hdlr = logging.StreamHandler(sys.stderr)
+    elif path == '#stdout':
+        hdlr = logging.StreamHandler(sys.stdout)
+    else:
+        hdlr = handlers.RotatingFileHandler(path, maxBytes=(1 << 23), backupCount=50)
     hdlr.setFormatter(logging.Formatter('%(asctime)s [%(name)s] %(levelname)s: %(message)s'))
     logger.addHandler(hdlr)
     logger.setLevel(logging.INFO if not debug else logging.DEBUG)
@@ -274,13 +281,12 @@ class Page(Action):
 
         # transform the page
         if files.page_exists(page_fs_path):
-            page_info = files.get_version_info(
-                self.data_dir, page_fs_path, info_encoding=conf.hg_info_encoding)
+            page_info = files.get_version_info(page_fs_path, info_encoding=conf.hg_info_encoding)
             inner_html = load_markdown(page_fs_path)
             page_template = 'page.html'
         else:
             inner_html = ''
-            page_info = ''
+            page_info = files.RevisionInfo()
             page_template = 'dummy_page.html'
 
         page_list = files.strip_prefix(

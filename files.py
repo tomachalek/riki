@@ -28,6 +28,15 @@ class FileInfo:
     metadata: Optional[Any] = None
 
 
+@dataclass
+class RevisionInfo:
+    date: Optional[str] = None
+    user: str = 'unknown'
+    changeset: Optional[str] = None
+    tag: Optional[str] = None
+    summary: Optional[str] = None
+
+
 def strip_prefix(list_files, prefix):
     return [re.sub(r'\.md$', '', re.sub(r'%s' % prefix, '', x)) for x in list_files]
 
@@ -133,34 +142,28 @@ def list_files(path, predicate=None, recursive=False, include_dirs=False) -> Lis
     return sorted(ans)
 
 
-def get_version_info(data_dir: str, path: str, info_encoding: str):
+def get_version_info(path: str, info_encoding: str) -> RevisionInfo:
     """
     Obtains information about a file via Mercurial Python API
 
     arguments:
-    data_dir -- path to a Mercurial repository (= riki data directory)
-    path -- a file we want log information about
+    path -- a file we want revision information about
     info_encoding -- encoding used on data fetched from hg (system dependent)
 
     returns:
     a dictionary {'date': str, 'user': str, 'changeset': str, 'summary' : str}
     """
-    from mercurial import commands, ui, hg, error
+    import subprocess
 
     ans = {}
     try:
-        bpath = path.encode(info_encoding)
-        repo = hg.repository(ui.ui(), data_dir.encode(info_encoding))
-        repo.ui.pushbuffer()
-        commands.log(repo.ui, repo, bpath)
-        output = repo.ui.popbuffer().decode(info_encoding)
-        for item in re.split(r'\n', output):
+        result = subprocess.run(['hg', 'log', path, '-l 1'], stdout=subprocess.PIPE)
+        for item in re.split(r'\n', result.stdout.decode()):
             srch = re.match(r'^(\w+):\s+(.+)$', item)
             if srch:
                 v = srch.groups()[1]
                 ans[srch.groups()[0]] = v if info_encoding.lower() == 'utf-8' else v.decode(info_encoding)
-    except error.Abort as e:
+    except Exception as e:
         logging.getLogger(__name__).warning('Failed to fetch version info about [%s]: %s' % (path, e))
-    if 'user' not in ans:
-        ans['user'] = 'unknown'
-    return ans
+    rev_info = RevisionInfo(**ans)
+    return rev_info
