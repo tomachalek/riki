@@ -1,0 +1,9 @@
+jinja2
+web.py
+dataclasses-json
+Whoosh
+Pillow
+markdown
+defusedxml
+beautifulsoup4
+pymdown-extensions
