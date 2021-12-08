@@ -10,7 +10,8 @@
     last change: <strong>{{ page_info.date }}</strong> by <strong>{{ page_info.user }}</strong>
     {% if page_info.changeset %}
     <br />
-    revision: <strong>{{ page_info.changeset }}</strong> ({{ page_info.summary }})
+    revision: <strong>{{ page_info.changeset }}</strong><br />
+    {{ page_info.summary }}
     {% endif %}
 </p>
 {% endblock %}
