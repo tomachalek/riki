@@ -56,12 +56,12 @@
 
                 {% if page_list %}
                 <ul class="page-list">
-                {% for item in page_list %}
+                {% for full_path, pname, is_dir in page_list %}
                     <li>
-                    {% if page_name == item[1] %}
-                        <span class="page current">{{ item[1] }}</span>
+                    {% if page_name == pname %}
+                        <span class="page current">{{ pname }}{% if is_dir %}/{% endif %}</span>
                     {% else %}
-                        <a class="page" href="{{ app_path }}page{{ item[0] }}">{{ item[1] }}</a>
+                        <a class="page" href="{{ app_path }}page{{ full_path }}">{{ pname }}{% if is_dir %}/{% endif %}</a>
                     {% endif %}
                     </li>
                 {% endfor %}

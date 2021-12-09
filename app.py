@@ -12,14 +12,16 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-import web
 import json
 import os
 import sys
 import logging
 from logging import handlers
 from typing import List, Tuple
+from dataclasses import asdict
 
+from aiohttp.web import View, Application, run_app
+from aiohttp import web
 import markdown
 from jinja2 import Environment, FileSystemLoader, FileSystemBytecodeCache
 import pymdownx.emoji
@@ -28,6 +30,7 @@ import files
 import pictures
 import search
 import appconf
+
 
 if 'RIKI_CONF_PATH' in os.environ:
     conf_path = os.environ['RIKI_CONF_PATH']
@@ -78,22 +81,6 @@ markdown_config = {
 }
 
 
-def open_template(filename):
-    cache = FileSystemBytecodeCache(conf.template_cache_dir)
-    env = Environment(
-        loader=FileSystemLoader(os.path.realpath(os.path.join(os.path.dirname(__file__), 'templates'))),
-        bytecode_cache=cache)
-    return env.get_template(filename)
-
-
-def import_path(path):
-    if path.find(APP_PATH) == 0:
-        path = path[len(APP_PATH):]
-    elif path[0] == '/':
-        path = path[1:]
-    return path
-
-
 def path_dir_elms(path: str) -> List[Tuple[str, str]]:
     items = [x for x in path.split('/') if x != '']
     cumul = []
@@ -104,7 +91,7 @@ def path_dir_elms(path: str) -> List[Tuple[str, str]]:
     return ans
 
 
-def load_markdown(path):
+def load_markdown(path: str) -> str:
     """
     Loads a markdown file and returns an HTML code
 
@@ -121,13 +108,54 @@ def load_markdown(path):
             extension_configs=markdown_config)
 
 
-class Action(object):
-    def __init__(self):
-        self._wildcard_query = bool(int(web.cookies().get('wildcard_query', '0')))
+routes = web.RouteTableDef()
 
-    def set_wildcard_query(self, v):
-        self._wildcard_query = v
-        web.setcookie('wildcard_query', str(int(self._wildcard_query)), 3600 * 24 * 7)
+
+class ActionHelper:
+
+    def __init__(self, conf: appconf.Conf, assets_url: str):
+        self._cache = FileSystemBytecodeCache(conf.template_cache_dir) if conf.template_cache_dir else None
+        self._assets_url = assets_url
+        self._template_env: Environment = Environment(
+            loader=FileSystemLoader(os.path.realpath(os.path.join(os.path.dirname(__file__), 'templates'))),
+            bytecode_cache=self._cache,
+            trim_blocks=True,
+            lstrip_blocks=True)
+
+    def response_html(self, template, data):
+        values = dict(
+            app_name=APP_NAME,
+            app_path=APP_PATH,
+            enable_search=True) # TODO
+        values.update(data)
+        template_object = self._template_env.get_template(template)
+        return web.Response(text=template_object.render(values), content_type='text/html')
+
+    def response_file(self, path: str):
+        return web.FileResponse(path)
+
+
+class BaseAction(View):
+
+    @property
+    def _ctx(self) -> ActionHelper:
+        return self.request.app['helper']
+
+    def response_html(self, template, data):
+        return self._ctx.response_html(template, data)
+
+    def response_file(self, path: bytes):
+        return self._ctx.response_file(path)
+
+    @property
+    def riki_path(self):
+        return self.request.match_info['path']
+
+    def url_arg(self, k):
+        return self.request.rel_url.query.get(k)
+
+
+class Action(BaseAction):
 
     @property
     def data_dir(self):
@@ -140,114 +168,67 @@ class Action(object):
             ans = os.path.basename(os.path.dirname(path))
         return ans
 
-    def _render(self, tpl_path, data, content_type='text/html'):
-        template = open_template(tpl_path)
-        web.header('Content-Type', content_type)
-        values = dict(
-            app_name=APP_NAME,
-            app_path=APP_PATH,
-            enable_search=True, # TODO
-            wildcard_query=self._wildcard_query)
-        values.update(data)
-        return template.render(**values)
+    def generate_page_list(self, curr_dir_fs):
+        page_list = files.list_files(curr_dir_fs, None, recursive=False, include_dirs=True)
+        return [(
+                files.strip_prefix(x, self.data_dir),
+                os.path.basename(files.strip_prefix(x, self.data_dir)),
+                os.path.isdir(x)
+            ) for x in page_list]
 
 
-class Index(object):
+@routes.view('/')
+class Index(Action):
     """
     Homepage
     """
-    def GET(self):
-        web.seeother(f'{APP_PATH}page/index')
+    async def get(self):
+        raise web.HTTPSeeOther(f'{APP_PATH}page/index')
 
 
-class Images(Action):
-    """
-    A page displaying list of all images
+@routes.view('/page')
+class PageNoSpec(View):
 
-    TODO: this should be rather an attachment browser of some kind
-    """
-    def GET(self):
-        images = files.list_files(self.data_dir, files.file_is_image, recursive=True)
-        extended = []
-        for img in images:
-            extended.append(files.get_file_info(img, path_prefix=self.data_dir))
-        return self._render('files.html', dict(files=extended))
+    async def get(self):
+        raise web.HTTPSeeOther(f'{APP_PATH}page/index')
 
 
+@routes.view('/page/{path:.+\.(txt|pdf|json|xml|yml|yaml)}')
 class Plain(Action):
-    def GET(self, path):
-        page_fs_path = os.path.join(self.data_dir, path)
-        web.header('Content-Type', 'text/plain')
-        with open(page_fs_path, 'rb') as f:
-            return f.read()
+
+    async def get(self):
+        return self.response_file(os.path.join(self.data_dir, self.riki_path))
 
 
-class Gallery(Action):
-
-    def GET(self, path):
-        path = import_path(path)
-        gallery_fs_dir = os.path.dirname(os.path.join(self.data_dir, path))
-        images = files.list_files(gallery_fs_dir, files.file_is_image, recursive=False)
-        parent_dir = os.path.dirname(os.path.dirname(path))
-
-        extended: List[files.FileInfo] = []
-        for img in images:
-            info = files.get_file_info(img, path_prefix=self.data_dir)
-            info.metadata = pictures.get_metadata(img)
-            extended.append(info)
-        page_list = files.strip_prefix(
-            files.list_files(
-                gallery_fs_dir,
-                os.path.isdir,
-                recursive=False,
-                include_dirs=True), self.data_dir)
-        page_list = map(lambda x: (x, os.path.basename(x)), page_list)
-        values = dict(
-            files=extended,
-            page_list=page_list,
-            path_elms=path_dir_elms(path),
-            curr_dir_name=self.get_current_dirname(path))
-        return self._render('gallery.html', values)
-
-
+@routes.view('/page/{path:.+\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF)}')
 class Picture(Action):
     """
     Provides access to images
     """
 
-    def GET(self, path, img_type):
-        content_types = {
-            'png': 'image/png',
-            'jpg': 'image/jpeg',
-            'jpeg': 'image/jpeg',
-            'gif': 'image/gif',
-            'ico': 'image/x-icon'
-        }
-        fs_path = os.path.join(self.data_dir, import_path(path))
-        args = web.input(width=None, normalize=False)
-        width = args.width
-        normalize = bool(int(args.normalize))
+    async def get(self):
+        fs_path = os.path.join(self.data_dir, self.riki_path)
+        width = self.request.rel_url.query.get('width')
+        normalize = bool(int(self.request.rel_url.query.get('normalize', '0')))
         if width is not None:
             fs_path = pictures.get_resized_image(
                 cache_dir=conf.picture_cache_dir,
                 path=fs_path,
                 width=width,
                 normalize=normalize)
-        with open(fs_path, 'rb') as image:
-            web.header('Content-Type', content_types.get(img_type, 'image/jpeg'))
-            return image.read()
+        return self.response_file(fs_path)
 
 
+@routes.view('/page/{path:.*}')
 class Page(Action):
     """
     A riki page
     """
-    def GET(self, path):
-        if not path:
-            raise web.seeother(f'{APP_PATH}page/index')
+    async def get(self):
+        if not self.riki_path:
+            raise web.HTTPSeeOther(f'{APP_PATH}page/index')
 
-        path = import_path(path)
-        page_fs_path = os.path.join(self.data_dir, path)
+        page_fs_path = os.path.join(self.data_dir, self.riki_path)
         pelms = page_fs_path.rsplit('.', 1)
         page_suff = None if len(pelms) < 2 else pelms[-1]
 
@@ -258,17 +239,17 @@ class Page(Action):
             except IOError:
                 metadata = {}
             if metadata.get('directoryType', 'page') == 'gallery':
-                raise web.seeother(f'{APP_PATH}gallery/{path}/index')
+                raise web.HTTPSeeOther(f'{APP_PATH}gallery/{self.riki_path}/index')
             else:
-                raise web.seeother(f'{APP_PATH}page/{path}/index')
+                raise web.HTTPSeeOther(f'{APP_PATH}page/{self.riki_path}/index')
         elif page_suff and page_suff in appconf.RAW_FILES:
             with open(page_fs_path, 'rb') as fr:
                 web.header('Content-Type', appconf.RAW_FILES[page_suff])
                 return fr.read()
         else:
             page_fs_path = f'{page_fs_path}.md'
-            curr_dir = os.path.dirname(path)
-            page_name = os.path.basename(path)
+            curr_dir = os.path.dirname(self.riki_path)
+            page_name = os.path.basename(self.riki_path)
 
         # setup the directory information
         if curr_dir:
@@ -289,34 +270,70 @@ class Page(Action):
             page_info = files.RevisionInfo()
             page_template = 'dummy_page.html'
 
-        page_list = files.strip_prefix(
-            files.list_files(curr_dir_fs, None, recursive=False,
-                include_dirs=True), self.data_dir)
-        page_list = [(x, os.path.basename(x)) for x in page_list]
         data = dict(
             html=inner_html,
-            page_list=page_list,
+            page_list=self.generate_page_list(curr_dir_fs),
             path_elms=path_elms,
             page_info=page_info,
             page_name=page_name,
             curr_dir_name=self.get_current_dirname(curr_dir))
-        return self._render(page_template, data)
+        return self.response_html(page_template, data)
 
 
+@routes.view('/_images')
+class Images(Action):
+    """
+    A page displaying list of all images
+
+    """
+    async def get(self):
+        images = files.list_files(self.data_dir, files.file_is_image, recursive=True)
+        extended = []
+        for img in images:
+            extended.append(files.get_file_info(img, path_prefix=self.data_dir))
+        return self.response_html('files.html', dict(files=extended))
+
+
+@routes.view('/gallery/{path:.*}')
+class Gallery(Action):
+
+    async def get(self):
+        gallery_fs_dir = os.path.dirname(os.path.join(self.data_dir, self.riki_path))
+        images = files.list_files(gallery_fs_dir, files.file_is_image, recursive=False)
+        extended: List[files.FileInfo] = []
+
+        for img in images:
+            info = files.get_file_info(img, path_prefix=self.data_dir)
+            info.metadata = pictures.get_metadata(img)
+            extended.append(info)
+        values = dict(
+            files=extended,
+            page_list=self.generate_page_list(gallery_fs_dir),
+            path_elms=path_dir_elms(self.riki_path),
+            curr_dir_name=self.get_current_dirname(self.riki_path))
+        return self.response_html('gallery.html', values)
+
+
+@routes.view('/_search')
 class Search(Action):
     """
     Search results page
     """
-    def GET(self):
+    async def get(self):
         srch = search.FulltextSearcher(conf.search_index_dir, conf.data_dir)
-        rows = srch.search(web.input().query)
-        values = dict(query=web.input().query, rows=rows)
-        return self._render('search.html', values)
+        rows = srch.search(self.url_arg('query'))
+        values = dict(query=self.url_arg('query'), rows=rows)
+        return self.response_html('search.html', values)
 
-# web.config.debug = False
-app = web.application(appconf.ROUTES, globals(), autoreload=False)
-application = app.wsgifunc()
+
+app = Application()
+app.add_routes(routes)
+
+async def setup_runtime(app):
+    app['helper'] = ActionHelper(conf, assets_url=None)  # TODO
+
+app.on_startup.append(setup_runtime)
 
 if __name__ == '__main__':
-    app = web.application(appconf.ROUTES, globals())
-    app.run()
+    app.update(asdict(conf))
+    run_app(app, port='8080')

@@ -37,8 +37,8 @@ class RevisionInfo:
     summary: Optional[str] = None
 
 
-def strip_prefix(list_files, prefix):
-    return [re.sub(r'\.md$', '', re.sub(r'%s' % prefix, '', x)) for x in list_files]
+def strip_prefix(path, prefix):
+    return re.sub(r'\.md$', '', re.sub(f'{prefix}', '', path))
 
 
 def page_exists(path):
