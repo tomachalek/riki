@@ -142,7 +142,7 @@ def list_files(path, predicate=None, recursive=False, include_dirs=False) -> Lis
     return sorted(ans)
 
 
-def get_version_info(path: str, info_encoding: str) -> RevisionInfo:
+def get_version_info(repo_path: str, path: str, info_encoding: str) -> RevisionInfo:
     """
     Obtains information about a file via Mercurial Python API
 
@@ -153,12 +153,16 @@ def get_version_info(path: str, info_encoding: str) -> RevisionInfo:
     returns:
     a dictionary {'date': str, 'user': str, 'changeset': str, 'summary' : str}
     """
-    import subprocess
+    from mercurial import ui, hg, commands
 
     ans = {}
     try:
-        result = subprocess.run(['hg', 'log', path, '-l 1'], stdout=subprocess.PIPE)
-        for item in re.split(r'\n', result.stdout.decode()):
+        u = ui.ui()
+        repo = hg.repository(u, repo_path.encode())
+        u.pushbuffer()
+        commands.log(u, repo, path.encode(), limit=1)
+        output = u.popbuffer()
+        for item in re.split(r'\n', output.decode()):
             srch = re.match(r'^(\w+):\s+(.+)$', item)
             if srch:
                 v = srch.groups()[1]
