@@ -262,7 +262,8 @@ class Page(Action):
 
         # transform the page
         if files.page_exists(page_fs_path):
-            page_info = files.get_version_info(page_fs_path, info_encoding=conf.hg_info_encoding)
+            page_info = files.get_version_info(
+                self.data_dir, page_fs_path, info_encoding=conf.hg_info_encoding)
             inner_html = load_markdown(page_fs_path)
             page_template = 'page.html'
         else:
@@ -333,6 +334,9 @@ async def setup_runtime(app):
     app['helper'] = ActionHelper(conf, assets_url=None)  # TODO
 
 app.on_startup.append(setup_runtime)
+
+async def factory():
+    return app
 
 if __name__ == '__main__':
     app.update(asdict(conf))

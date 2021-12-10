@@ -7,3 +7,4 @@ markdown
 defusedxml
 beautifulsoup4
 pymdown-extensions
+mercurial
