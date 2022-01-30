@@ -166,6 +166,10 @@ menu .menu-alt {
     font-size: 2em;
 }
 
+menu .metadata {
+    padding: 1em;
+}
+
 /* ---------- general page ------------------- */
 
 section.main {

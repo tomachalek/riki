@@ -54,6 +54,7 @@
                     </div>
                 </div>
 
+                {% block page_list_block %}
                 {% if page_list %}
                 <ul class="page-list">
                 {% for full_path, pname, is_dir in page_list %}
@@ -72,6 +73,7 @@
                     {% endblock %}
                     </div>
                 {% endif %}
+                {% endblock %}
             </menu>
             <section class="main">
                 {% block content %}
