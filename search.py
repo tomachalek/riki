@@ -12,9 +12,10 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+from nis import match
 from whoosh.fields import Schema, TEXT, KEYWORD, ID
 from whoosh.analysis import StemmingAnalyzer
-from whoosh import index, writing
+from whoosh import index, writing, highlight
 from whoosh.qparser import MultifieldParser
 from bs4 import BeautifulSoup
 from markdown import markdown
@@ -63,12 +64,18 @@ class FulltextSearcher(Fulltext):
         q_obj = qp.parse(q)
         ans = []
         with self._index.searcher() as srch:
-            for hit in srch.search(q_obj):
+            results = srch.search(q_obj, terms=True)
+            results.fragmenter = highlight.ContextFragmenter(maxchars=100, surround=30)
+            for hit in results:
                 item = dict(hit)
                 full_path = os.path.join(self._data_dir, hit['path'])
                 with open(full_path) as fr:
                     full_text = fr.read()
-                    item['highlight'] = hit.highlights('body', text=full_text)
+                    matched = dict(hit.matched_terms())
+                    if 'body' in matched:
+                        item['highlight'] = '...{} ... '.format(hit.highlights('body', text=full_text))
+                    else:
+                        item['highlight'] = None
                 item['path'] = item['path'].rsplit('.', 1)[0]
                 ans.append(item)
         return ans
