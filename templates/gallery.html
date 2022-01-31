@@ -15,6 +15,18 @@
 </script>
 {% endblock %}
 
+
+{% block page_list_block %}
+<div class="metadata">
+    <p>
+        number of files: {{ num_files }}
+        {% if description %}
+        <br />{{ description }}
+        {% endif %}
+    </p>
+</div>
+{% endblock %}
+
 {% block content %}
 
 <div class="pic-grid">

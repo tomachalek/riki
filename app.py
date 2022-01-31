@@ -12,13 +12,13 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-import json
 import os
 import sys
 import logging
 from logging import handlers
-from typing import List, Tuple
-from dataclasses import asdict
+from typing import List, Tuple, Optional
+from dataclasses import asdict, dataclass
+from dataclasses_json import dataclass_json, LetterCase
 
 from aiohttp.web import View, Application, run_app
 from aiohttp import web
@@ -111,9 +111,19 @@ def load_markdown(path: str) -> str:
 routes = web.RouteTableDef()
 
 
+@dataclass_json(letter_case=LetterCase.CAMEL)
+@dataclass
+class PageMetadata:
+
+    directory_type: Optional[str] = 'page'
+
+    description: Optional[str] = None
+
+
 class ActionHelper:
 
     def __init__(self, conf: appconf.Conf, assets_url: str):
+        self._page_metadata = None
         self._cache = FileSystemBytecodeCache(conf.template_cache_dir) if conf.template_cache_dir else None
         self._assets_url = assets_url
         self._template_env: Environment = Environment(
@@ -133,6 +143,15 @@ class ActionHelper:
 
     def response_file(self, path: str):
         return web.FileResponse(path)
+
+    def page_metadata(self, page_fs_path: str) -> PageMetadata:
+        if self._page_metadata is None:
+            try:
+                with open(os.path.join(page_fs_path, 'metadata.json'), 'rb') as fr:
+                    self._page_metadata = PageMetadata.from_json(fr.read())
+            except IOError:
+                self._page_metadata = PageMetadata()
+        return self._page_metadata
 
 
 class BaseAction(View):
@@ -175,6 +194,10 @@ class Action(BaseAction):
                 os.path.basename(files.strip_prefix(x, self.data_dir)),
                 os.path.isdir(x)
             ) for x in page_list]
+
+    @property
+    def page_metadata(self) -> PageMetadata:
+        return self._ctx.page_metadata(os.path.join(self.data_dir, self.riki_path))
 
 
 @routes.view('/')
@@ -233,15 +256,12 @@ class Page(Action):
         page_suff = None if len(pelms) < 2 else pelms[-1]
 
         if files.page_is_dir(page_fs_path):
-            try:
-                with open(os.path.join(page_fs_path, 'metadata.json'), 'rb') as fr:
-                    metadata = json.load(fr)
-            except IOError:
-                metadata = {}
-            if metadata.get('directoryType', 'page') == 'gallery':
+            if self.page_metadata.directory_type == 'gallery':
                 raise web.HTTPSeeOther(f'{APP_PATH}gallery/{self.riki_path}/index')
-            else:
+            elif self.page_metadata.directory_type == 'page':
                 raise web.HTTPSeeOther(f'{APP_PATH}page/{self.riki_path}/index')
+            else:
+                raise web.HTTPServerError('Unknown page type')
         elif page_suff and page_suff in appconf.RAW_FILES:
             with open(page_fs_path, 'rb') as fr:
                 web.header('Content-Type', appconf.RAW_FILES[page_suff])
@@ -298,6 +318,9 @@ class Images(Action):
 @routes.view('/gallery/{path:.*}')
 class Gallery(Action):
 
+    async def get_num_files(self, path: str):
+        return len(os.listdir(path)) - 1 # minus metadata.json which is required for a gallery page
+
     async def get(self):
         gallery_fs_dir = os.path.dirname(os.path.join(self.data_dir, self.riki_path))
         images = files.list_files(gallery_fs_dir, files.file_is_image, recursive=False)
@@ -309,9 +332,11 @@ class Gallery(Action):
             extended.append(info)
         values = dict(
             files=extended,
-            page_list=self.generate_page_list(gallery_fs_dir),
+            page_list=[],
             path_elms=path_dir_elms(self.riki_path),
-            curr_dir_name=self.get_current_dirname(self.riki_path))
+            curr_dir_name=self.get_current_dirname(self.riki_path),
+            num_files=await self.get_num_files(gallery_fs_dir),
+            description=self.page_metadata.description)
         return self.response_html('gallery.html', values)
 
 

@@ -10,7 +10,14 @@ Search for <em class="search-term">{{ query }}</em>:
 <ul class="search-result">
 {% for row in rows %}
     <li><h2><a class="path" href="{{ app_path }}page/{{ row.path }}">/{{ row.path }}</a></h2>
-        <div>{{ row.highlight }}</div>
+        {% if row.highlight %}
+            <div class="fragment">
+                <div class="format-info"><span>markdown</span></div>
+                <pre>{{ row.highlight }}</pre>
+            </div>
+        {% else %}
+            <p class="found-in-meta">found in metadata/path</p>
+        {% endif %}
     </li>
 {% endfor %}
 </ul>

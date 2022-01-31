@@ -166,6 +166,10 @@ menu .menu-alt {
     font-size: 2em;
 }
 
+menu .metadata {
+    padding: 1em;
+}
+
 /* ---------- general page ------------------- */
 
 section.main {
@@ -341,23 +345,44 @@ section.main a.external {
     color: #f73e5f;
 }
 
-ul.search-result {
+section.main ul.search-result {
     list-style-type: none;
     margin-left: 0;
     padding-left: 0;
 }
 
-ul.search-result > li {
+section.main ul.search-result > li {
     margin: 0 0 1.5em 0;
 }
 
-ul.search-result > li h2 a.path {
+section.main ul.search-result > li h2 a.path {
     text-decoration: none;
     font-size: 0.9em;
 }
 
-ul.search-result > li a.path:hover {
+section.main ul.search-result > li a.path:hover {
     text-decoration: underline;
+}
+
+section.main ul.search-result > li .fragment {
+    border: 1px solid #D5D5D5;
+    border-radius: 4px;
+}
+
+section.main ul.search-result > li .found-in-meta {
+    font-size: 0.8em;
+}
+
+section.main ul.search-result > li .fragment .format-info {
+    background-color: #D5D5D5;
+    color: #777777;
+    font-size: 0.7em;
+    padding-left: 1em;
+}
+
+section.main ul.search-result > li pre {
+    margin: 0;
+    border: none;
 }
 
 ul li .match {
