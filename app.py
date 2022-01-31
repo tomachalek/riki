@@ -113,7 +113,7 @@ routes = web.RouteTableDef()
 
 @dataclass_json(letter_case=LetterCase.CAMEL)
 @dataclass
-class PageMetadata:
+class DirMetadata:
 
     directory_type: Optional[str] = 'page'
 
@@ -123,7 +123,7 @@ class PageMetadata:
 class ActionHelper:
 
     def __init__(self, conf: appconf.Conf, assets_url: str):
-        self._page_metadata = None
+        self._dir_metadata = {}
         self._cache = FileSystemBytecodeCache(conf.template_cache_dir) if conf.template_cache_dir else None
         self._assets_url = assets_url
         self._template_env: Environment = Environment(
@@ -144,14 +144,21 @@ class ActionHelper:
     def response_file(self, path: str):
         return web.FileResponse(path)
 
-    def page_metadata(self, page_fs_path: str) -> PageMetadata:
-        if self._page_metadata is None:
+    def dir_metadata(self, page_fs_path: str) -> DirMetadata:
+        try:
+            dir_path = page_fs_path if files.page_is_dir(page_fs_path) else os.path.dirname(page_fs_path)
+        except FileNotFoundError as ex:
+            if os.path.basename(page_fs_path) == 'index':  # 'index' is an acceptable virtual page
+                dir_path = os.path.dirname(page_fs_path)
+            else:
+                raise ex
+        if dir_path not in self._dir_metadata:
             try:
-                with open(os.path.join(page_fs_path, 'metadata.json'), 'rb') as fr:
-                    self._page_metadata = PageMetadata.from_json(fr.read())
+                with open(os.path.join(dir_path, 'metadata.json'), 'rb') as fr:
+                    self._dir_metadata[dir_path] = DirMetadata.from_json(fr.read())
             except IOError:
-                self._page_metadata = PageMetadata()
-        return self._page_metadata
+                self._dir_metadata[dir_path] = DirMetadata()
+        return self._dir_metadata[dir_path]
 
 
 class BaseAction(View):
@@ -196,8 +203,8 @@ class Action(BaseAction):
             ) for x in page_list]
 
     @property
-    def page_metadata(self) -> PageMetadata:
-        return self._ctx.page_metadata(os.path.join(self.data_dir, self.riki_path))
+    def dir_metadata(self) -> DirMetadata:
+        return self._ctx.dir_metadata(os.path.join(self.data_dir, self.riki_path))
 
 
 @routes.view('/')
@@ -255,10 +262,10 @@ class Page(Action):
         pelms = page_fs_path.rsplit('.', 1)
         page_suff = None if len(pelms) < 2 else pelms[-1]
 
-        if files.page_is_dir(page_fs_path):
-            if self.page_metadata.directory_type == 'gallery':
+        if self.dir_metadata.directory_type == 'gallery':
                 raise web.HTTPSeeOther(f'{APP_PATH}gallery/{self.riki_path}/index')
-            elif self.page_metadata.directory_type == 'page':
+        elif files.page_is_dir(page_fs_path):
+            if self.dir_metadata.directory_type == 'page':
                 raise web.HTTPSeeOther(f'{APP_PATH}page/{self.riki_path}/index')
             else:
                 raise web.HTTPServerError('Unknown page type')
@@ -322,8 +329,25 @@ class Gallery(Action):
         return len(os.listdir(path)) - 1 # minus metadata.json which is required for a gallery page
 
     async def get(self):
-        gallery_fs_dir = os.path.dirname(os.path.join(self.data_dir, self.riki_path))
-        images = files.list_files(gallery_fs_dir, files.file_is_image, recursive=False)
+        gallery_fs_dir = os.path.join(self.data_dir, self.riki_path)
+        if files.page_is_dir(gallery_fs_dir):
+            if self.dir_metadata.directory_type == 'page':
+                raise web.HTTPSeeOther(f'{APP_PATH}page/{self.riki_path}/index')
+            elif self.dir_metadata.directory_type == 'gallery':
+                raise web.HTTPSeeOther(f'{APP_PATH}gallery/{self.riki_path}/index')
+            else:
+                raise web.HTTPServerError('Unknown page type')
+        elif os.path.isfile(gallery_fs_dir):
+            raise web.HTTPInternalServerError('Gallery directory malformed')
+        elif os.path.basename(gallery_fs_dir) == 'index':
+            gallery_fs_dir = os.path.dirname(gallery_fs_dir)
+        else:
+            raise web.HTTPNotFound()
+
+        try:
+            images = files.list_files(gallery_fs_dir, files.file_is_image, recursive=False)
+        except FileNotFoundError:
+            raise web.HTTPNotFound()
         extended: List[files.FileInfo] = []
 
         for img in images:
@@ -336,7 +360,7 @@ class Gallery(Action):
             path_elms=path_dir_elms(self.riki_path),
             curr_dir_name=self.get_current_dirname(self.riki_path),
             num_files=await self.get_num_files(gallery_fs_dir),
-            description=self.page_metadata.description)
+            description=self.dir_metadata.description)
         return self.response_html('gallery.html', values)
 
 
