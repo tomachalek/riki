@@ -21,7 +21,15 @@ import shutil
 from markupsafe import Markup, escape
 from appconf import Conf
 import argparse
-from typing import List, Dict, Any
+import logging
+import threading
+from collections import OrderedDict
+from typing import List, Dict, Any, Optional, Tuple
+
+try:
+    import pypdf
+except ImportError:  # PDF indexing is optional
+    pypdf = None
 
 """
 python3 search.py --data-dir /home/tomas/work/data/riki-data-test/ -x ./test-index
@@ -150,14 +158,21 @@ class FulltextSearcher(Fulltext):
                 display_path = path_value.rsplit('.', 1)[0] if path_value.endswith('.md') else path_value
                 item['path'] = display_path
 
+                item['format'] = 'pdf' if is_pdf_file(path_value) else 'markdown'
+
                 # Read the file to generate snippet
                 full_path = os.path.join(self._data_dir, path_value)
                 try:
-                    with open(full_path, 'r', encoding='utf-8') as fr:
-                        content = fr.read()
-                        plain_text = extract_text_from_md(content)
+                    if is_pdf_file(path_value):
+                        plain_text = _cached_pdf_text(full_path)
+                    else:
+                        with open(full_path, 'r', encoding='utf-8') as fr:
+                            plain_text = extract_text_from_md(fr.read())
+                    if plain_text:
                         snippet = self._extract_snippet(plain_text, query_terms)
                         item['highlight'] = self._highlight_terms(snippet, query_terms)
+                    else:
+                        item['highlight'] = None
                 except (IOError, UnicodeDecodeError):
                     item['highlight'] = None
             else:
@@ -191,6 +206,71 @@ def extract_title_from_md(md_text: str) -> str:
     return ''
 
 
+def is_pdf_file(path: str) -> bool:
+    return path.lower().endswith('.pdf')
+
+
+def pdf_support_available() -> bool:
+    return pypdf is not None
+
+
+def extract_text_from_pdf(path: str) -> Optional[Tuple[str, str]]:
+    """
+    Extract plain text and a title (from the document metadata) of a PDF file.
+
+    Returns None if the PDF cannot be processed (missing pypdf library,
+    encrypted or malformed file). Scanned PDFs without a text layer yield an empty text.
+    """
+    if pypdf is None:
+        logging.getLogger(__name__).warning('pypdf not installed - cannot extract text from %s', path)
+        return None
+    try:
+        reader = pypdf.PdfReader(path)
+        if reader.is_encrypted:
+            reader.decrypt('')  # documents with an empty user password are common
+        pages = []
+        for page in reader.pages:
+            try:
+                pages.append(page.extract_text() or '')
+            except Exception as ex:  # a single broken page should not spoil the whole document
+                logging.getLogger(__name__).warning('failed to extract a page of %s: %s', path, ex)
+        title = ''
+        try:
+            title = (reader.metadata.title if reader.metadata else None) or ''
+        except Exception:
+            pass
+        text = re.sub(r'\s+', ' ', '\n'.join(pages)).strip()
+        return text, str(title).strip()
+    except Exception as ex:
+        logging.getLogger(__name__).warning('failed to extract text from PDF %s: %s', path, ex)
+        return None
+
+
+_pdf_text_cache: 'OrderedDict[Tuple[str, float], str]' = OrderedDict()
+_pdf_text_cache_lock = threading.Lock()
+_PDF_TEXT_CACHE_SIZE = 50
+
+
+def _cached_pdf_text(path: str) -> Optional[str]:
+    """
+    PDF text for search result snippets (the index does not store document bodies).
+    Extracted texts are cached by path and modification time.
+    """
+    key = (path, os.path.getmtime(path))
+    with _pdf_text_cache_lock:
+        if key in _pdf_text_cache:
+            _pdf_text_cache.move_to_end(key)
+            return _pdf_text_cache[key]
+    extracted = extract_text_from_pdf(path)
+    text = extracted[0] if extracted else None
+    if text is not None:
+        with _pdf_text_cache_lock:
+            _pdf_text_cache[key] = text
+            while len(_pdf_text_cache) > _PDF_TEXT_CACHE_SIZE:
+                _pdf_text_cache.popitem(last=False)
+    return text
+
+
 class FulltextWriter(Fulltext):
 
     _writer: tantivy.IndexWriter
@@ -222,9 +302,31 @@ class FulltextWriter(Fulltext):
             path: Relative path to the file
             md_text: Markdown content of the file
         """
-        text = extract_text_from_md(md_text)
-        title = extract_title_from_md(md_text)
+        self._add(path, extract_title_from_md(md_text), extract_text_from_md(md_text))
 
+    def update_pdf_document(self, path: str, fs_path: str) -> bool:
+        """
+        Replace any indexed version of a PDF document with its current content.
+
+        Args:
+            path: Relative path to the file (within the data dir)
+            fs_path: Filesystem path of the PDF file
+
+        Returns:
+            True if the document has been indexed, False if no text could be extracted
+        """
+        self._writer.delete_documents_by_term("path", path)
+        return self.add_pdf_document(path, fs_path)
+
+    def add_pdf_document(self, path: str, fs_path: str) -> bool:
+        extracted = extract_text_from_pdf(fs_path)
+        if extracted is None:
+            return False
+        text, title = extracted
+        self._add(path, title or os.path.basename(path).rsplit('.', 1)[0], text)
+        return True
+
+    def _add(self, path: str, title: str, text: str):
         # Extract tags from path segments, excluding 'index' and empty strings
         tags = ' '.join(x for x in path.rsplit('.', 1)[0].split('/') if x not in ('index', ''))
 
@@ -243,7 +345,7 @@ def _is_text_file(fpath: str) -> bool:
 
 def index_recursive(data_root: str, rel_path: str, fulltext: FulltextWriter):
     """
-    Recursively index all markdown and text files in a directory tree.
+    Recursively index all markdown, text and PDF files in a directory tree.
 
     Args:
         data_root: Root directory of the data
@@ -271,6 +373,11 @@ def index_recursive(data_root: str, rel_path: str, fulltext: FulltextWriter):
                     print(f"Indexed: {os.path.join(rel_path, item)}")
             except (IOError, UnicodeDecodeError) as e:
                 print(f"Warning: Cannot read {file_path}: {e}")
+        elif os.path.isfile(file_path) and is_pdf_file(file_path):
+            if fulltext.add_pdf_document(os.path.join(rel_path, item), file_path):
+                print(f"Indexed: {os.path.join(rel_path, item)}")
+            else:
+                print(f"Warning: Cannot extract text from {file_path}")
         elif os.path.isdir(file_path):
             index_recursive(data_root, os.path.join(rel_path, item), fulltext)
 
@@ -283,7 +390,7 @@ if __name__ == '__main__':
     with open(conf_path) as fr:
         conf: Conf = Conf.from_json(fr.read())
 
-    argparser = argparse.ArgumentParser(description="Markdown file indexer using Tantivy")
+    argparser = argparse.ArgumentParser(description="Markdown/text/PDF file indexer using Tantivy")
     argparser.add_argument(
         '-f', '--file', help="(re)index a single file located within the data dir")
     argparser.add_argument(
@@ -300,10 +407,13 @@ if __name__ == '__main__':
 
     if args.file:
         rel_path = os.path.relpath(os.path.abspath(args.file), os.path.abspath(data_dir))
-        with open(os.path.join(data_dir, rel_path), 'r', encoding='utf-8') as fr:
-            md_content = fr.read()
         with FulltextWriter(index_dir) as fw:
-            fw.update_document(rel_path, md_content)
+            if is_pdf_file(rel_path):
+                if not fw.update_pdf_document(rel_path, os.path.join(data_dir, rel_path)):
+                    raise SystemExit(f"Cannot extract text from {rel_path}")
+            else:
+                with open(os.path.join(data_dir, rel_path), 'r', encoding='utf-8') as fr:
+                    fw.update_document(rel_path, fr.read())
         print(f"Updated: {rel_path}")
     else:
         # full reindex always starts from an empty index (no duplicates, up-to-date schema)

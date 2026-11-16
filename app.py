@@ -159,6 +159,8 @@ class ActionHelper:
             'enable_search': True,  # TODO
             'enable_editing': conf.enable_editing,
             'enable_link_preview': bool(conf.link_preview_cache_dir),
+            'upload_accept': ','.join(f'.{x}' for x in appconf.UPLOAD_EXTENSIONS),
+            'upload_max_size_mb': conf.upload_max_size_mb,
             **data,
         }
         template_object = self._template_env.get_template(template)
@@ -354,6 +356,8 @@ class Page(Action):
             'curr_dir_name': self.get_current_dirname(curr_dir),
             'new_page_dir': curr_dir,
             'link_cards': link_cards,
+            'upload_error': UPLOAD_ERRORS.get(self.url_arg('upload_error') or ''),
+            'uploaded': self.url_arg('uploaded'),
         }
         resp = self.response_html(page_template, data)
         resp.set_status(status)
@@ -582,6 +586,156 @@ class Edit(Action):
                 # the page itself is saved; the index can be rebuilt with search.py
                 logger.exception('failed to update fulltext index for %s', rel_path)
         return None
+
+
+UPLOAD_ERRORS = {
+    'name': 'Invalid file name.',
+    'type': 'This file type cannot be uploaded (allowed: {}).'.format(', '.join(appconf.UPLOAD_EXTENSIONS)),
+    'size': f'The file is too large (max. {conf.upload_max_size_mb} MB).',
+    'exists': 'A file with this name already exists (check "replace existing" to overwrite it).',
+    'dir': 'Invalid target directory.',
+    'empty': 'No file selected or the file is empty.',
+    'commit': 'Failed to commit the file - nothing has been saved (see the log for details).',
+}
+
+
+def _sanitize_upload_name(filename: str) -> Optional[str]:
+    """
+    Returns a safe file name (no path, no hidden files, lowercase suffix) or None if not possible
+    """
+    name = os.path.basename(filename.replace('\\', '/')).strip()
+    if not name or name.startswith('.') or '\x00' in name or '.' not in name:
+        return None
+    stem, suff = name.rsplit('.', 1)
+    if not stem.strip():
+        return None
+    return f'{stem}.{suff.lower()}'
+
+
+@routes.view('/_upload')
+class Upload(Action):
+    """
+    Uploads a file (image, PDF, ...) to a directory, commits it to the Mercurial
+    repository and (for PDF and text files) updates the fulltext index.
+    """
+
+    _CHUNK_SIZE = 1 << 16
+
+    def _redirect(self, return_to: str, **args: str):
+        elms = [x for x in return_to.split('/') if x and x not in ('.', '..')]
+        target = f'{APP_PATH}page/{quote("/".join(elms) or "index")}'
+        query = '&'.join(f'{k}={quote(v, safe="")}' for k, v in args.items())
+        return web.HTTPSeeOther(f'{target}?{query}' if query else target)
+
+    async def post(self):
+        if not conf.enable_editing:
+            raise web.HTTPForbidden(text='Uploading is disabled')
+        data_root = os.path.realpath(self.data_dir)
+        max_size = conf.upload_max_size_mb * (1 << 20)
+        fields: Dict[str, str] = {}
+        tmp_path = None
+        file_name = None
+        error = None
+        try:
+            reader = await self.request.multipart()
+            while (part := await reader.next()) is not None:
+                if part.name == 'file' and tmp_path is None and error is None:
+                    file_name = _sanitize_upload_name(part.filename or '')
+                    if file_name is None:
+                        error = 'empty' if not part.filename else 'name'
+                    elif file_name.rsplit('.', 1)[1] not in appconf.UPLOAD_EXTENSIONS:
+                        error = 'type'
+                    if error:
+                        await part.release()
+                        continue
+                    # staged in the data dir (same filesystem => atomic rename); hidden from listings
+                    fd, tmp_path = tempfile.mkstemp(dir=data_root, prefix='.riki-upload-')
+                    size = 0
+                    with os.fdopen(fd, 'wb') as fw:
+                        while chunk := await part.read_chunk(self._CHUNK_SIZE):
+                            size += len(chunk)
+                            if size > max_size:
+                                error = 'size'
+                                break
+                            fw.write(chunk)
+                    if error is None and size == 0:
+                        error = 'empty'
+                    if error:
+                        await part.release()
+                elif part.name in ('dir', 'return_to', 'replace'):
+                    fields[part.name] = (await part.text())[:4096]
+                else:
+                    await part.release()
+            return_to = fields.get('return_to', '')
+            if error is None and file_name is None:
+                error = 'empty'
+            if error:
+                raise self._redirect(return_to, upload_error=error)
+            return await run_blocking(
+                lambda: self._store(data_root, tmp_path, fields.get('dir', ''), file_name,
+                                    bool(fields.get('replace')), return_to))
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
+    def _store(self, data_root: str, tmp_path: str, directory: str, file_name: str, replace: bool,
+               return_to: str):
+        dir_elms = [x for x in directory.split('/') if x]
+        if any(x.startswith('.') for x in dir_elms):
+            raise self._redirect(return_to, upload_error='dir')
+        target_dir = os.path.realpath(os.path.join(data_root, *dir_elms))
+        if not (target_dir == data_root or target_dir.startswith(data_root + os.sep)) \
+                or not os.path.isdir(target_dir):
+            raise self._redirect(return_to, upload_error='dir')
+        fs_path = os.path.join(target_dir, file_name)
+        rel_path = os.path.relpath(fs_path, data_root)
+
+        with _edit_lock:
+            if os.path.isdir(fs_path) or (os.path.exists(fs_path) and not replace):
+                raise self._redirect(return_to, upload_error='exists')
+            backup_path = None
+            if os.path.exists(fs_path):
+                backup_path = f'{tmp_path}.bak'
+                os.replace(fs_path, backup_path)
+                shutil.copymode(backup_path, tmp_path)
+            else:
+                os.chmod(tmp_path, 0o644)
+            os.replace(tmp_path, fs_path)
+            try:
+                action = 'Replace' if backup_path else 'Upload'
+                files.commit_file(self.data_dir, rel_path, f'{action} {rel_path}', conf.hg_commit_user)
+            except Exception:
+                logger.exception('failed to commit uploaded file %s', rel_path)
+                if backup_path:
+                    os.replace(backup_path, fs_path)
+                else:
+                    os.unlink(fs_path)
+                raise self._redirect(return_to, upload_error='commit')
+            if backup_path:
+                os.unlink(backup_path)
+            self._index(rel_path, fs_path)
+
+        logger.info('uploaded file %s', rel_path)
+        raise self._redirect(return_to, uploaded=rel_path)
+
+    @staticmethod
+    def _index(rel_path: str, fs_path: str):
+        if not conf.search_index_dir:
+            return
+        suff = rel_path.rsplit('.', 1)[-1]
+        try:
+            if suff == 'pdf':
+                with search.FulltextWriter(conf.search_index_dir) as fw:
+                    if not fw.update_pdf_document(rel_path, fs_path):
+                        logger.warning('uploaded PDF %s could not be indexed', rel_path)
+            elif suff == 'txt':
+                with open(fs_path, 'r', encoding='utf-8') as fr:
+                    content = fr.read()
+                with search.FulltextWriter(conf.search_index_dir) as fw:
+                    fw.update_document(rel_path, content)
+        except Exception:
+            # the file itself is saved; the index can be rebuilt with search.py
+            logger.exception('failed to update fulltext index for %s', rel_path)
 
 
 @routes.view('/_search')
