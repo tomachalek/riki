@@ -519,6 +519,35 @@ menu form.new-page input[name="name"] {
     min-width: 0;
 }
 
+menu form.upload {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    padding: 0 1em 1em 1.3em;
+    font-size: 0.85em;
+}
+
+menu form.upload input[type="file"] {
+    max-width: 100%;
+}
+
+menu form.upload .upload-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.3em;
+}
+
+menu form.upload .upload-msg {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+menu form.upload .upload-msg.error {
+    color: #b00020;
+    font-weight: bold;
+}
+
 /* --------------- external link previews ------------------ */
 
 .link-preview-popup {

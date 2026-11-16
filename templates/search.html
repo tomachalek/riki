@@ -12,7 +12,7 @@ Search for <em class="search-term">{{ query }}</em>:
     <li><h2><a class="path" href="{{ app_path }}page/{{ row.path }}?hl={{ query|urlencode }}">/{{ row.path }}</a></h2>
         {% if row.highlight %}
             <div class="fragment">
-                <div class="format-info"><span>markdown</span></div>
+                <div class="format-info"><span>{{ row.format or "markdown" }}</span></div>
                 <pre>{{ row.highlight }}</pre>
             </div>
         {% else %}

@@ -80,6 +80,21 @@
                     <input type="text" name="name" placeholder="new page name" required />
                     <button type="submit" title="create a new page in this directory">+</button>
                 </form>
+                <form class="upload" action="{{ app_path }}_upload" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="dir" value="{{ new_page_dir }}" />
+                    <input type="hidden" name="return_to" value="{{ page_path }}" />
+                    <input type="file" name="file" accept="{{ upload_accept }}" required
+                           title="images, PDF and text files up to {{ upload_max_size_mb }} MB" />
+                    <div class="upload-controls">
+                        <label><input type="checkbox" name="replace" value="1" /> replace existing</label>
+                        <button type="submit" title="upload the file to this directory">upload</button>
+                    </div>
+                    {% if upload_error %}
+                    <p class="upload-msg error">{{ upload_error }}</p>
+                    {% elif uploaded %}
+                    <p class="upload-msg">uploaded: <a href="{{ app_path }}page/{{ uploaded|urlencode }}">{{ uploaded }}</a></p>
+                    {% endif %}
+                </form>
                 {% endif %}
             </menu>
             <section class="main">

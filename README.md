@@ -46,6 +46,17 @@ local clones.
 Note: the fulltext index requires a full rebuild (`search.py` without `-f`) once after upgrading
 to this version. A single file can be re-indexed via `search.py -f path/to/file.md`.
 
+### Uploading files
+
+With editing enabled, the side panel of a page also contains an upload form which stores a file
+(images, PDF, txt, json, xml, yaml) into the directory of the current page. Each upload is committed
+to the Mercurial repository. Uploaded PDF (and txt) files are added to the fulltext index - PDF text
+extraction requires the `pypdf` package (scanned PDFs without a text layer cannot be searched).
+`search.py` indexes PDF files found in the data directory as well.
+
+The maximum file size is set via `"uploadMaxSizeMb": 50` (default 50). When running behind
+Nginx, raise its `client_max_body_size` (default 1 MB) accordingly.
+
 ## Tips
 
 ### Transforming a directory into a picture gallery

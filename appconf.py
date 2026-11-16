@@ -40,6 +40,8 @@ class Conf:
     # allow fetching previews from loopback/private network addresses (e.g. home NAS, router);
     # note that anyone who can access Riki can then probe your local network via the preview service
     link_preview_allow_private: bool = False
+    # max. size of a file uploaded via the side panel (uploading requires enable_editing)
+    upload_max_size_mb: int = 50
 
 
 def load_conf(path: str) -> Conf:
@@ -67,3 +69,6 @@ RAW_FILES = {
     'yml': 'text/yaml',
     'yaml': 'text/yaml'
 }
+
+# file types which can be uploaded (all of them can be displayed/downloaded by Riki)
+UPLOAD_EXTENSIONS = ('jpg', 'jpeg', 'png', 'gif') + tuple(RAW_FILES.keys())
