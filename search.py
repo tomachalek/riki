@@ -22,8 +22,6 @@ from markupsafe import Markup, escape
 from appconf import Conf
 import argparse
 import logging
-import threading
-from collections import OrderedDict
 from typing import List, Dict, Any, Optional, Tuple
 
 try:
@@ -54,7 +52,9 @@ class Fulltext:
         # 'raw' = the whole path is a single term, which allows exact delete-by-path on update
         schema_builder.add_text_field("path", stored=True, tokenizer_name="raw")
         schema_builder.add_text_field("title", stored=True)
-        schema_builder.add_text_field("body", stored=False)  # Don't store to save space
+        # stored so search result snippets don't require re-reading (and for PDFs re-parsing)
+        # the source files at query time; the doc store is compressed
+        schema_builder.add_text_field("body", stored=True)
         schema_builder.add_text_field("tags", stored=True)
         return schema_builder.build()
 
@@ -160,13 +160,12 @@ class FulltextSearcher(Fulltext):
 
                 item['format'] = 'pdf' if is_pdf_file(path_value) else 'markdown'
 
-                # Read the file to generate snippet
-                full_path = os.path.join(self._data_dir, path_value)
                 try:
-                    if is_pdf_file(path_value):
-                        plain_text = _cached_pdf_text(full_path)
-                    else:
-                        with open(full_path, 'r', encoding='utf-8') as fr:
+                    plain_text = doc.get_first("body")
+                    if plain_text is None and not is_pdf_file(path_value):
+                        # index created before the body was stored - fall back to reading
+                        # the source (cheap for markdown; PDFs are skipped as re-parsing is slow)
+                        with open(os.path.join(self._data_dir, path_value), 'r', encoding='utf-8') as fr:
                             plain_text = extract_text_from_md(fr.read())
                     if plain_text:
                         snippet = self._extract_snippet(plain_text, query_terms)
@@ -244,31 +243,6 @@ def extract_text_from_pdf(path: str) -> Optional[Tuple[str, str]]:
     except Exception as ex:
         logging.getLogger(__name__).warning('failed to extract text from PDF %s: %s', path, ex)
         return None
-
-
-_pdf_text_cache: 'OrderedDict[Tuple[str, float], str]' = OrderedDict()
-_pdf_text_cache_lock = threading.Lock()
-_PDF_TEXT_CACHE_SIZE = 50
-
-
-def _cached_pdf_text(path: str) -> Optional[str]:
-    """
-    PDF text for search result snippets (the index does not store document bodies).
-    Extracted texts are cached by path and modification time.
-    """
-    key = (path, os.path.getmtime(path))
-    with _pdf_text_cache_lock:
-        if key in _pdf_text_cache:
-            _pdf_text_cache.move_to_end(key)
-            return _pdf_text_cache[key]
-    extracted = extract_text_from_pdf(path)
-    text = extracted[0] if extracted else None
-    if text is not None:
-        with _pdf_text_cache_lock:
-            _pdf_text_cache[key] = text
-            while len(_pdf_text_cache) > _PDF_TEXT_CACHE_SIZE:
-                _pdf_text_cache.popitem(last=False)
-    return text
 
 
 class FulltextWriter(Fulltext):

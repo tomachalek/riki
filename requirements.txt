@@ -7,4 +7,6 @@ markdown
 defusedxml
 beautifulsoup4
 pymdown-extensions
-mercurialpypdf
+mercurial
+pypdf[crypto]
+fonttools
