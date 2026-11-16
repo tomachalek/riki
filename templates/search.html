@@ -9,7 +9,7 @@ Search for <em class="search-term">{{ query }}</em>:
 
 <ul class="search-result">
 {% for row in rows %}
-    <li><h2><a class="path" href="{{ app_path }}page/{{ row.path }}">/{{ row.path }}</a></h2>
+    <li><h2><a class="path" href="{{ app_path }}page/{{ row.path }}?hl={{ query|urlencode }}">/{{ row.path }}</a></h2>
         {% if row.highlight %}
             <div class="fragment">
                 <div class="format-info"><span>markdown</span></div>

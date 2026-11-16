@@ -14,12 +14,19 @@
     {{ page_info.summary }}
     {% endif %}
 </p>
+{% if enable_editing %}
+<p><a class="edit" href="{{ app_path }}_edit/{{ page_path }}">edit this page</a></p>
+{% endif %}
 {% endblock %}
 
 {% block script %}
 <script type="text/javascript">
     require(['models/page'], function (page) {
-        page.init();
+        page.init({
+            appPath: {{ app_path|tojson }},
+            linkPreview: {{ enable_link_preview|tojson }},
+            linkCards: {{ (enable_link_preview and link_cards)|tojson }}
+        });
     });
 </script>
 {% endblock %}

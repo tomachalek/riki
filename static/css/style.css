@@ -345,6 +345,13 @@ section.main a.external {
     color: #f73e5f;
 }
 
+section.main mark.search-hl {
+    background-color: #ffe066;
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
 section.main ul.search-result {
     list-style-type: none;
     margin-left: 0;
@@ -457,4 +464,211 @@ ul li .match {
         text-align: left;
     }
 
+}
+footer p + p {
+    margin-left: 2em;
+}
+
+section.main form.page-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8em;
+}
+
+section.main form.page-editor textarea {
+    width: 100%;
+    min-height: 60vh;
+    box-sizing: border-box;
+    padding: 0.6em;
+    font-family: monospace;
+    font-size: 0.95em;
+    line-height: 1.4;
+    resize: vertical;
+}
+
+section.main form.page-editor label {
+    display: flex;
+    gap: 0.6em;
+    align-items: center;
+}
+
+section.main form.page-editor input[name="message"] {
+    flex-grow: 1;
+    padding: 0.3em;
+}
+
+section.main form.page-editor .buttons {
+    display: flex;
+    gap: 1.2em;
+    align-items: center;
+}
+
+section.main form.page-editor .error {
+    color: #b00020;
+    font-weight: bold;
+}
+
+menu form.new-page {
+    display: flex;
+    gap: 0.3em;
+    padding: 0 1em 1em 1.3em;
+}
+
+menu form.new-page input[name="name"] {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+/* --------------- external link previews ------------------ */
+
+.link-preview-popup {
+    position: absolute;
+    z-index: 1000;
+    width: 340px;
+    max-width: calc(100vw - 16px);
+    background-color: #FFFFFF;
+    color: #555555;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    font-size: 0.85em;
+    line-height: 1.4;
+    pointer-events: none;
+}
+
+.link-preview-popup .lp-loading {
+    padding: 0 0.9em 0.8em 0.9em;
+    font-style: italic;
+    color: #999999;
+}
+
+.link-preview-popup > .lp-site {
+    padding: 0.7em 0.9em 0.4em 0.9em;
+}
+
+.link-preview-popup .lp-thumb,
+section.main .link-card .lp-thumb {
+    aspect-ratio: 1.91 / 1;
+    background-color: #DDDDDD;
+    overflow: hidden;
+}
+
+.link-preview-popup .lp-thumb img,
+section.main .link-card .lp-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+}
+
+.link-preview-popup .lp-body,
+section.main .link-card .lp-body {
+    padding: 0.6em 0.9em 0.7em 0.9em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3em;
+}
+
+.link-preview-popup .lp-title,
+section.main .link-card .lp-title {
+    font-weight: bold;
+    color: #333333;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+.link-preview-popup .lp-desc,
+section.main .link-card .lp-desc {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow: hidden;
+}
+
+.link-preview-popup .lp-desc:empty,
+section.main .link-card .lp-desc:empty {
+    display: none;
+}
+
+.link-preview-popup .lp-site,
+section.main .link-card .lp-site {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 0.85em;
+    color: #999999;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.link-preview-popup .lp-site img.lp-icon,
+section.main .link-card .lp-site img.lp-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+section.main .link-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1.2em;
+    margin: 1em 0 1.5em 0;
+    padding: 0;
+    list-style-type: none;
+}
+
+section.main .link-card {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    background-color: #FFFFFF;
+    border-radius: 6px;
+    box-shadow: 2px 2px 3px #AAAAAA;
+    overflow: hidden;
+    font-size: 0.9em;
+    line-height: 1.4;
+    transition: box-shadow 0.15s, transform 0.15s;
+}
+
+section.main .link-card:hover {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    transform: translateY(-2px);
+}
+
+section.main .link-card a.lp-card-main {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    color: inherit;
+    text-decoration: none;
+}
+
+section.main .link-card a.lp-card-main:hover .lp-title {
+    color: #3B8BBA;
+}
+
+section.main .link-card .lp-thumb.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: 'Merriweather', serif;
+    font-size: 3em;
+}
+
+section.main .link-card .lp-note {
+    padding: 0.5em 0.9em 0.7em 0.9em;
+    border-top: 1px solid #EEEEEE;
+    font-size: 0.95em;
+}
+
+.link-preview-popup .lp-thumb img.contain,
+section.main .link-card .lp-thumb img.contain {
+    object-fit: contain;
+    background-color: #FFFFFF;
 }

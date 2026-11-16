@@ -5,6 +5,7 @@
     "logPath" : "/path/to/a/log/dir/application.log",
     "templateCacheDir" : "/path/to/a/cache/dir",
     "pictureCacheDir" : "/path/to/a/picture-cache/dir",
+    "linkPreviewCacheDir" : "/path/to/a/link-preview-cache/dir",
     "markdownExtensions" : ["tables", "fenced_code"],
     "fulltext": {
       "serviceUrl": "http://localhost:9200",

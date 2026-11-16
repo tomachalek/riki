@@ -74,6 +74,13 @@
                     </div>
                 {% endif %}
                 {% endblock %}
+                {% if enable_editing and new_page_dir is defined %}
+                <form class="new-page" action="{{ app_path }}_new" method="GET">
+                    <input type="hidden" name="dir" value="{{ new_page_dir }}" />
+                    <input type="text" name="name" placeholder="new page name" required />
+                    <button type="submit" title="create a new page in this directory">+</button>
+                </form>
+                {% endif %}
             </menu>
             <section class="main">
                 {% block content %}

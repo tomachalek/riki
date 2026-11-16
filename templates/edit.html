@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+
+{% block menu_content %}
+Editing&#x2026;
+{% endblock %}
+
+{% block content %}
+<form class="page-editor" action="{{ app_path }}_edit/{{ page_path }}" method="POST">
+    {% if error %}
+    <p class="error">{{ error }}</p>
+    {% endif %}
+    <input type="hidden" name="base_hash" value="{{ base_hash }}" />
+    <textarea name="content" rows="30" spellcheck="false" autofocus>
+{{ content }}</textarea>
+    <label>
+        commit message:
+        <input type="text" name="message" value="{{ message }}" required />
+    </label>
+    <div class="buttons">
+        <button type="submit">Save</button>
+        <a href="{{ app_path }}page/{{ page_path }}">cancel</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block footer %}
+<p>editing <strong>{{ page_path }}.md</strong> (Markdown)</p>
+{% endblock %}

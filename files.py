@@ -142,32 +142,74 @@ def list_files(path, predicate=None, recursive=False, include_dirs=False) -> Lis
     return sorted(ans)
 
 
-def get_version_info(repo_path: str, path: str, info_encoding: str) -> RevisionInfo:
+def get_version_info(repo_path: str, path: str) -> RevisionInfo:
     """
-    Obtains information about a file via Mercurial Python API
+    Obtains information about the last change of a file (as of the working
+    directory's parent revision) via Mercurial Python API
 
     arguments:
+    repo_path -- path to the Mercurial repository root
     path -- a file we want revision information about
-    info_encoding -- encoding used on data fetched from hg (system dependent)
 
     returns:
-    a dictionary {'date': str, 'user': str, 'changeset': str, 'summary' : str}
+    revision info; default values if the file is not tracked or on error
     """
-    from mercurial import ui, hg, commands
+    from mercurial import ui, hg, encoding, error
+    from mercurial.utils import dateutil
 
-    ans = {}
+    def to_str(v: bytes) -> str:
+        return v.decode('utf-8', errors='replace')
+
+    rel_path = os.path.relpath(os.path.realpath(path), os.path.realpath(repo_path)).replace(os.sep, '/')
     try:
-        u = ui.ui()
-        repo = hg.repository(u, repo_path.encode())
-        u.pushbuffer()
-        commands.log(u, repo, path.encode(), limit=1)
-        output = u.popbuffer()
-        for item in re.split(r'\n', output.decode()):
-            srch = re.match(r'^(\w+):\s+(.+)$', item)
-            if srch:
-                v = srch.groups()[1]
-                ans[srch.groups()[0]] = v if info_encoding.lower() == 'utf-8' else v.decode(info_encoding)
+        # Mercurial stores metadata in UTF-8; make it return them unchanged regardless of the server locale
+        encoding.encoding = b'utf-8'
+        repo = hg.repository(ui.ui(), repo_path.encode())
+        fctx = repo[b'.'][rel_path.encode()]
+        ctx = repo[fctx.introrev()]  # the changeset which introduced the current file version
+        return RevisionInfo(
+            date=to_str(dateutil.datestr(ctx.date())),
+            user=to_str(ctx.user()),
+            changeset=f'{ctx.rev()}:{to_str(ctx.hex()[:12])}',
+            tag=' '.join(to_str(t) for t in ctx.tags()) or None,
+            summary=to_str(ctx.description().split(b'\n', 1)[0]))
+    except error.LookupError:  # e.g. a new file not committed yet
+        return RevisionInfo()
     except Exception as e:
-        logging.getLogger(__name__).warning('Failed to fetch version info about [%s]: %s' % (path, e))
-    rev_info = RevisionInfo(**ans)
-    return rev_info
+        logging.getLogger(__name__).warning('Failed to fetch version info about [%s]: %s', path, e)
+        return RevisionInfo()
+
+
+def commit_file(repo_path: str, rel_path: str, message: str, user: Optional[str] = None) -> bool:
+    """
+    Commits a single file (adding it to the repository if it is new) via Mercurial Python API.
+
+    arguments:
+    repo_path -- path to the Mercurial repository root
+    rel_path -- path of the file relative to the repository root
+    message -- commit message
+    user -- commit author; if None, Mercurial's configuration decides
+
+    returns:
+    True if a changeset was created, False if there was nothing to commit
+
+    raises:
+    mercurial.error.Abort (or another Mercurial exception) on failure
+    """
+    from mercurial import ui, hg, commands, encoding
+
+    # make Mercurial independent of the server locale (e.g. 'C' in a container)
+    encoding.encoding = b'utf-8'
+    u = ui.ui.load()
+    repo = hg.repository(u, repo_path.encode())
+    opts = {'message': message.encode(), 'addremove': True}
+    if user:
+        opts['user'] = user.encode()
+    u.pushbuffer(error=True)
+    try:
+        ret = commands.commit(u, repo, b'path:' + rel_path.encode(), **opts)
+    finally:
+        output = u.popbuffer()
+    if output:
+        logging.getLogger(__name__).info('hg commit [%s]: %s', rel_path, output.decode(errors='replace').strip())
+    return not ret
