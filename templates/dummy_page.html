@@ -13,6 +13,9 @@
 {% endfor %}
 </ul>
 <p>(auto-generated index)</p>
+{% if enable_editing %}
+<p><a class="edit" href="{{ app_path }}_edit/{{ page_path }}">create an index page for this directory</a></p>
+{% endif %}
 {% endblock %}
 
 {% block footer %}

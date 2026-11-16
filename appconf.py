@@ -25,11 +25,21 @@ class Conf:
     log_path: str
     template_cache_dir: str
     picture_cache_dir: str
-    hg_info_encoding: str
     search_index_dir: Optional[str] = None
     markdown_extensions: List[str] = field(default_factory=lambda: [])
     emoji_cdn_url: Optional[str] = None
     app_name: str = field(default='Riki')
+    # no longer used (Mercurial metadata are always UTF-8), kept for compatibility with existing configs
+    hg_info_encoding: str = 'utf-8'
+    # Riki has no authentication - enable only if the access is restricted otherwise
+    enable_editing: bool = False
+    # Mercurial user for commits made via the editor (if None, hg's own configuration is used)
+    hg_commit_user: Optional[str] = None
+    # previews of external links (hover popups, link cards) - disabled if None
+    link_preview_cache_dir: Optional[str] = None
+    # allow fetching previews from loopback/private network addresses (e.g. home NAS, router);
+    # note that anyone who can access Riki can then probe your local network via the preview service
+    link_preview_allow_private: bool = False
 
 
 def load_conf(path: str) -> Conf:
@@ -42,7 +52,7 @@ ROUTES = (
     '/', 'Index',
     '/_images', 'Images',
     '/page(/.+\\.txt)', 'Plain',
-    '/page(/.+\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF))', 'Picture',
+    r'/page(/.+\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF))', 'Picture',
     '/page(/.*)?', 'Page',
     '/gallery(/.*)?', 'Gallery',
     '/_search', 'Search'

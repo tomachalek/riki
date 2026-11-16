@@ -1,0 +1,31 @@
+version: '3.7'
+
+services:
+  riki:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      - /home/tomas/work/data/riki-defrag:/var/opt/riki/data
+      - /home/tomas/work/www/riki:/opt/riki
+      - /home/tomas/work/www/riki/test-index:/var/opt/riki/srch-index
+      - /home/tomas/work/www/riki/log:/var/log
+    networks:
+      - rikinet
+
+  nginx:
+    image: nginx:latest
+    environment:
+      - TZ=Europe/Prague
+    ports:
+      - "8095:80"
+    volumes:
+      - ./nginx.docker.conf:/etc/nginx/conf.d/default.conf
+      - ./static:/opt/riki/static
+    networks:
+      - rikinet
+    depends_on:
+      - riki
+
+networks:
+  rikinet: {}

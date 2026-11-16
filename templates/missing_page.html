@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+
+
+{% block content %}
+<h1>page &quot;{{ page_name }}&quot; does not exist</h1>
+{% if enable_editing %}
+<p><a class="edit" href="{{ app_path }}_edit/{{ page_path }}">create this page</a></p>
+{% endif %}
+{% endblock %}
+
+{% block footer %}
+[generated automatically by Riki]
+{% endblock %}
